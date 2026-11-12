@@ -4,7 +4,7 @@ version = "1.11.1"
 edition = "2021"
 description = "Lantern, a self-hosted Discord music bot"
 repository = "https://github.com/quietwarlock/lantern-bot"
-license-file = "LICENSE"
+license = "MIT"
 
 [features]
 default = ["gui"]

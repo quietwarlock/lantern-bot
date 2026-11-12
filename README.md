@@ -325,4 +325,4 @@ The window and the Discord embeds use black, magenta `#FF2EA6`, and cyan `#2DE2E
 
 ## License
 
-Not chosen yet. See [LICENSE](LICENSE).
+MIT. See [LICENSE](LICENSE).
