@@ -1,0 +1,15 @@
+/target
+lantern-settings.json*
+lantern-data.json*
+lantern-log*.txt
+lantern-crash.txt
+lantern-ytdlp-check.txt
+yt-dlp.exe*
+lantern-library.json*
+lantern-settings*.json*
+deno.exe
+*.token
+.env
+.env.*
+*.exe
+!assets/*.exe

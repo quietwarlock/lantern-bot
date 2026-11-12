@@ -1,0 +1,778 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#0a0a0c">
+<title>Lantern</title>
+<link rel="icon" href="/icon.png">
+<style>
+:root{--bg:#0a0a0c;--s1:#121216;--s2:#18181d;--s3:#202027;--line:#26262e;--text:#f3f5f7;--muted:#8d949c;--dim:#5d636b;--pink:#ff2ea6;--cyan:#2de2e6;--red:#ff6b7a;--r:14px;--side:232px;--bar:84px;--nav:0px}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%}
+body{margin:0;overflow-x:hidden;background:var(--bg);color:var(--text);font:14.5px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:var(--cyan);text-decoration:none}
+a:hover{text-decoration:underline}
+svg.i{width:20px;height:20px;flex:none;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+svg.i.f{fill:currentColor;stroke:none}
+.hidden{display:none!important}
+.side{position:fixed;inset:0 auto 0 0;width:var(--side);background:var(--s1);border-right:1px solid var(--line);display:flex;flex-direction:column;padding:18px 12px calc(var(--bar) + 12px);z-index:20}
+.brand{display:flex;align-items:center;gap:10px;padding:0 8px 18px}
+.brand img{width:36px;height:36px}
+.brand b{font-size:19px;letter-spacing:.2px}
+.brand small{display:block;color:var(--dim);font-size:11.5px;font-weight:500}
+.nav{display:flex;flex-direction:column;gap:2px}
+.nav a{display:flex;align-items:center;gap:12px;padding:10px 12px;border-radius:10px;color:var(--muted);font-weight:600;cursor:pointer;text-decoration:none;user-select:none}
+.nav a:hover{background:var(--s2);color:var(--text)}
+.nav a.on{background:var(--s3);color:var(--text)}
+.nav a.on svg{color:var(--pink)}
+.status{margin-top:auto;display:flex;align-items:center;gap:8px;padding:10px 12px;border-radius:10px;background:var(--s2);font-size:13px;color:var(--muted)}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--dim);flex:none}
+.dot.ok{background:var(--cyan);box-shadow:0 0 8px var(--cyan)}
+.dot.busy{background:var(--pink);box-shadow:0 0 8px var(--pink)}
+main{margin-left:var(--side);padding:28px 32px calc(var(--bar) + 36px);max-width:calc(1180px + var(--side))}
+.top{display:none}
+.page{display:none;animation:fade .18s ease}
+.page.on{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(4px)}to{opacity:1;transform:none}}
+h1{font-size:26px;margin:0 0 4px;letter-spacing:-.3px}
+.lead{color:var(--muted);margin:0 0 22px}
+h2{font-size:12px;letter-spacing:.09em;text-transform:uppercase;color:var(--muted);margin:0 0 12px;font-weight:700}
+h3{font-size:14px;margin:22px 0 8px;color:var(--text)}
+.card{background:var(--s1);border:1px solid var(--line);border-radius:var(--r);padding:18px}
+.grid{display:grid;gap:18px;grid-template-columns:minmax(0,1fr)}
+.grid>*,.card{min-width:0}
+.g2{grid-template-columns:minmax(0,1fr) minmax(0,1fr)}
+.g-np{grid-template-columns:minmax(0,5fr) minmax(0,7fr)}
+.row{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.grow{flex:1;min-width:0}
+.muted{color:var(--muted);font-size:13px;overflow-wrap:anywhere}
+.sp{height:14px}
+button,.btn{display:inline-flex;align-items:center;justify-content:center;gap:7px;background:var(--s3);color:var(--text);border:1px solid transparent;border-radius:10px;padding:9px 14px;font:inherit;font-weight:600;cursor:pointer;white-space:nowrap;transition:background .12s,color .12s,transform .06s}
+button:hover{background:#2a2a33}
+button:active{transform:scale(.97)}
+button:disabled{opacity:.4;cursor:default;transform:none}
+button.pri{background:var(--pink);color:#0a0a0c}
+button.pri:hover{background:#ff55b8}
+button.ghost{background:transparent;color:var(--muted)}
+button.ghost:hover{background:var(--s3);color:var(--text)}
+button.on{color:var(--cyan)}
+button.ic{padding:8px;border-radius:50%;background:transparent;color:var(--muted)}
+button.ic:hover{background:var(--s3);color:var(--text)}
+button.ic.on{color:var(--pink)}
+button.sm{padding:6px 10px;font-size:13px;border-radius:8px}
+input[type=text],input[type=password],input[type=number],input[type=search],select{background:var(--s2);color:var(--text);border:1px solid var(--line);border-radius:10px;padding:10px 12px;font:inherit;outline:none;transition:border-color .12s}
+input:focus,select:focus{border-color:var(--pink)}
+input[type=text],input[type=password],input[type=search]{width:100%}
+input[type=number]{width:100px}
+input[type=checkbox]{accent-color:var(--pink);width:18px;height:18px;margin:1px 0 0;flex:none}
+input[type=range]{-webkit-appearance:none;appearance:none;background:transparent;width:100%;height:18px;margin:0;cursor:pointer;--p:0%}
+input[type=range]::-webkit-slider-runnable-track{height:4px;border-radius:2px;background:linear-gradient(90deg,var(--pink) var(--p),#33333c var(--p))}
+input[type=range]::-moz-range-track{height:4px;border-radius:2px;background:#33333c}
+input[type=range]::-moz-range-progress{height:4px;border-radius:2px;background:var(--pink)}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:13px;height:13px;border-radius:50%;background:#fff;margin-top:-4.5px;border:0}
+input[type=range]::-moz-range-thumb{width:13px;height:13px;border-radius:50%;background:#fff;border:0}
+input[type=range]:disabled{opacity:.35;cursor:default}
+.search{position:relative}
+.search svg{position:absolute;left:12px;top:50%;transform:translateY(-50%);color:var(--dim);width:18px;height:18px}
+.search input{padding-left:38px}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;padding:2px 7px;border-radius:6px;background:var(--s3);color:var(--muted)}
+.chip.live{background:var(--pink);color:#0a0a0c}
+.chip.yt{color:#ff6b6b}.chip.sc{color:#ff9a3c}.chip.lib{color:var(--cyan)}.chip.radio{color:var(--pink)}
+.list{list-style:none;margin:0;padding:0}
+.item{display:flex;align-items:center;gap:12px;padding:8px 10px;border-radius:10px;min-height:52px;position:relative}
+.item:hover{background:var(--s2)}
+.item.cur{background:linear-gradient(90deg,rgba(255,46,166,.13),transparent 70%)}
+.item.cur .tt{color:var(--pink)}
+.item.drag{opacity:.4}
+.item.over{box-shadow:inset 0 2px 0 var(--pink)}
+.art{width:42px;height:42px;border-radius:8px;background:var(--s3);flex:none;display:grid;place-items:center;color:var(--dim);overflow:hidden;position:relative}
+.art img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.art svg{width:18px;height:18px}
+.meta{flex:1;min-width:0}
+.tt{font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.st{color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:flex;gap:6px;align-items:center}
+.st .err{color:var(--red)}
+.len{color:var(--muted);font-size:12.5px;font-variant-numeric:tabular-nums;flex:none}
+.acts{display:flex;gap:2px;flex:none}
+.acts button{padding:7px}
+.item .hov{opacity:0;transition:opacity .1s}
+.item:hover .hov,.item:focus-within .hov{opacity:1}
+.n{width:22px;text-align:right;color:var(--dim);font-size:12.5px;font-variant-numeric:tabular-nums;flex:none}
+.n svg{width:15px;height:15px;color:var(--pink)}
+.empty{color:var(--muted);text-align:center;padding:28px 10px}
+.empty svg{width:34px;height:34px;color:var(--dim);display:block;margin:0 auto 8px}
+.scroll{max-height:calc(100vh - 330px);min-height:180px;overflow:auto;margin:0 -8px;padding:0 8px}
+.hero{display:flex;flex-direction:column;align-items:center;text-align:center;gap:14px;padding:26px 18px}
+.cover{width:min(260px,62vw);aspect-ratio:1;border-radius:18px;background:radial-gradient(circle at 30% 20%,#2b1630,#121216 70%);display:grid;place-items:center;overflow:hidden;box-shadow:0 20px 50px rgba(0,0,0,.55),0 0 0 1px var(--line);position:relative}
+.cover img{position:absolute;inset:0;width:100%;height:100%;object-fit:cover}
+.cover svg{width:72px;height:72px;color:rgba(255,46,166,.55)}
+.htitle{font-size:21px;font-weight:700;line-height:1.25;max-width:100%;overflow-wrap:anywhere}
+.hsub{display:flex;gap:8px;align-items:center;justify-content:center;color:var(--muted);font-size:13px;flex-wrap:wrap;margin-top:6px}
+.hsub svg{width:16px;height:16px}
+.seek{display:flex;align-items:center;gap:10px;width:100%;max-width:440px;font-size:12px;color:var(--muted);font-variant-numeric:tabular-nums}
+.seek span{width:44px}
+.seek span:last-child{text-align:right}
+.ctl{display:flex;align-items:center;gap:14px}
+.ctl .big{width:58px;height:58px;border-radius:50%;background:var(--text);color:#0a0a0c;padding:0}
+.ctl .big:hover{background:#fff;transform:scale(1.04)}
+.ctl .big svg{width:26px;height:26px}
+.ctl button.ic svg{width:22px;height:22px}
+.hint{font-size:12.5px;color:var(--dim)}
+.np{display:flex;gap:14px;align-items:center}
+.np .cover{width:84px;border-radius:12px;box-shadow:none}
+.np .cover svg{width:34px;height:34px}
+.bar{height:4px;border-radius:2px;background:#33333c;overflow:hidden;margin-top:8px}
+.bar div{height:100%;background:var(--pink);width:0}
+.recent .item{cursor:pointer;min-height:40px}
+.field{display:grid;grid-template-columns:200px minmax(0,1fr);gap:14px;align-items:start;padding:12px 0;border-bottom:1px solid var(--line)}
+.field:last-child{border-bottom:0}
+.field>span{font-weight:600;padding-top:9px}
+.field .muted{margin-top:6px}
+.check{display:flex;gap:12px;align-items:flex-start;padding:11px 0;border-bottom:1px solid var(--line);cursor:pointer}
+.check:last-child{border-bottom:0}
+.check small{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}
+.banner{display:flex;gap:10px;align-items:center;padding:12px 16px;border-radius:12px;margin:0 0 18px}
+.banner.update{background:rgba(45,226,230,.08);border:1px solid rgba(45,226,230,.4)}
+.banner.warn{background:rgba(255,107,122,.08);border:1px solid rgba(255,107,122,.5);color:var(--red)}
+.crumbs{display:flex;flex-wrap:wrap;gap:2px;align-items:center;font-size:13.5px}
+.crumbs a{cursor:pointer;color:var(--muted);padding:3px 7px;border-radius:7px;text-decoration:none}
+.crumbs a:hover{background:var(--s3);color:var(--text)}
+.crumbs a:last-child{color:var(--text);font-weight:600}
+.crumbs span{color:var(--dim)}
+#log{background:#060607;border:1px solid var(--line);border-radius:12px;padding:12px 14px;height:calc(100vh - 230px);min-height:260px;overflow:auto;font:12.5px/1.55 ui-monospace,SFMono-Regular,Consolas,monospace;white-space:pre-wrap;word-break:break-word;color:#c9ced3}
+pre#diag{white-space:pre-wrap;background:#060607;border:1px solid var(--line);padding:12px;border-radius:12px;max-height:300px;overflow:auto;font-size:12px}
+ol.steps{padding-left:20px;margin:6px 0;color:var(--muted)}
+ol.steps li{margin:6px 0}
+#toast{position:fixed;left:50%;bottom:calc(var(--bar) + var(--nav) + 18px);transform:translateX(-50%) translateY(10px);background:var(--s3);border:1px solid var(--line);box-shadow:0 10px 30px rgba(0,0,0,.5);padding:10px 16px;border-radius:12px;opacity:0;pointer-events:none;transition:all .18s;max-width:min(560px,92vw);z-index:60;font-weight:500}
+#toast.on{opacity:1;transform:translateX(-50%)}
+.player{position:fixed;left:0;right:0;bottom:var(--nav);height:var(--bar);background:rgba(16,16,20,.94);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr) minmax(0,1fr);align-items:center;gap:16px;padding:0 18px;z-index:30}
+.p-now{display:flex;align-items:center;gap:12px;min-width:0;cursor:pointer}
+.p-now .art{width:52px;height:52px;border-radius:9px}
+.p-mid{display:flex;flex-direction:column;align-items:center;gap:4px}
+.p-mid .ctl{gap:8px}
+.p-mid .big{width:40px;height:40px}
+.p-mid .big svg{width:18px;height:18px}
+.p-mid .ctl button.ic svg{width:19px;height:19px}
+.p-mid .seek{max-width:560px}
+.p-right{display:flex;justify-content:flex-end;align-items:center;gap:6px}
+.p-right input{width:110px}
+.mob-prog{display:none}
+@media (max-width:1200px){.g2{grid-template-columns:minmax(0,1fr)}.g2>.grid{display:contents}#recentcard{order:2}}
+@media (max-width:1100px){.g-np{grid-template-columns:minmax(0,1fr)}.scroll{max-height:none}}
+@media (max-width:860px){
+  :root{--side:0px;--bar:66px;--nav:60px}
+  .side{display:none}
+  main{margin:0;padding:12px 14px calc(var(--bar) + var(--nav) + 26px)}
+  .top{display:flex;align-items:center;gap:10px;padding:2px 2px 14px}
+  .top img{width:30px;height:30px}
+  .top b{font-size:18px;flex:1}
+  .top .status{margin:0;padding:6px 10px;background:var(--s1)}
+  .g2{grid-template-columns:minmax(0,1fr)}
+  h1{font-size:22px}
+  .lead{margin-bottom:14px}
+  .card{padding:14px;border-radius:12px}
+  .bnav{position:fixed;left:0;right:0;bottom:0;height:var(--nav);padding-bottom:env(safe-area-inset-bottom);background:var(--s1);border-top:1px solid var(--line);display:flex;z-index:31}
+  .bnav a{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--dim);font-size:10.5px;font-weight:600;text-decoration:none}
+  .bnav a.on{color:var(--text)}
+  .bnav a.on svg{color:var(--pink)}
+  .player{grid-template-columns:minmax(0,1fr) auto;padding:0 10px 0 12px;gap:8px}
+  .p-now .art{width:44px;height:44px}
+  .p-mid .seek,.p-right,.p-mid .hide-m{display:none}
+  .mob-prog{display:block;position:absolute;left:0;right:0;top:-1px;height:2px}
+  .mob-prog div{height:100%;width:0;background:var(--pink)}
+  .field{grid-template-columns:1fr;gap:4px}
+  .field>span{padding-top:0}
+  .item .hov{opacity:1}
+  .acts .hide-m{display:none}
+  .cover{width:min(240px,66vw)}
+  #log{height:calc(100vh - 260px)}
+}
+@media (min-width:861px){.bnav{display:none}}
+</style>
+</head>
+<body>
+<aside class="side">
+  <div class="brand"><img src="/icon.png" alt=""><div><b>Lantern</b><small id="ver"></small></div></div>
+  <nav class="nav" id="nav"></nav>
+  <div class="status"><span class="dot" id="dot"></span><span id="conn">…</span></div>
+</aside>
+
+<main>
+  <div class="top"><img src="/icon.png" alt=""><b>Lantern</b><div class="status"><span class="dot" id="dot2"></span><span id="conn2">…</span></div></div>
+  <div class="banner update hidden" id="update"></div>
+  <div class="banner warn hidden" id="warn"><span class="grow" id="warntext"></span><button class="sm" onclick="dismiss()">Dismiss</button></div>
+
+  <section class="page" id="p-listen">
+    <h1>Listen</h1>
+    <p class="lead">Plays here, on this device's speakers. Its own queue, separate from Discord.</p>
+    <div class="grid g-np">
+      <div class="card hero" id="hero">
+        <div class="cover" id="h-cover"></div>
+        <div style="max-width:100%">
+          <div class="htitle" id="h-title">Nothing playing</div>
+          <div class="hsub" id="h-sub"></div>
+        </div>
+        <div class="seek"><span id="h-pos">0:00</span><input type="range" id="h-seek" min="0" max="1000" value="0" disabled><span id="h-len">0:00</span></div>
+        <div class="ctl">
+          <button class="ic" id="h-shuffle" title="Shuffle what's up next" onclick="wact({action:'shuffle'})"></button>
+          <button class="ic" title="Previous" onclick="prev()" data-i="prev"></button>
+          <button class="big" id="h-play" title="Play / pause" onclick="toggle()"></button>
+          <button class="ic" title="Next" onclick="next(false)" data-i="next"></button>
+          <button class="ic" id="h-repeat" title="Repeat" onclick="cycleRepeat()"></button>
+        </div>
+        <div class="hint" id="h-hint">Add something, then press play.</div>
+      </div>
+      <div class="card">
+        <div class="search"><svg class="i"><use href="#i-search"/></svg><input type="search" id="w-q" placeholder="Search YouTube, or paste a link" onkeydown="if(event.key==='Enter')wsearch()" autocomplete="off"></div>
+        <div id="w-results" class="hidden">
+          <div class="row" style="margin:12px 0 4px"><h2 class="grow" style="margin:0">Results</h2><button class="sm ghost" onclick="closeResults()">Close</button></div>
+          <ul class="list" id="w-rlist"></ul>
+        </div>
+        <div class="row" style="margin:16px 0 6px"><h2 class="grow" style="margin:0">Queue <span id="w-count" style="color:var(--dim)"></span></h2>
+          <button class="sm ghost" onclick="wact({action:'clear_played'})" id="w-clearplayed" title="Remove the songs above the current one">Clear played</button>
+          <button class="sm ghost" onclick="if(confirm('Clear the whole web queue?'))wact({action:'clear'}).then(stopAudio)" id="w-clear">Clear</button></div>
+        <div class="scroll"><ul class="list" id="w-list"></ul></div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="p-discord">
+    <h1>Discord</h1>
+    <p class="lead">What the bot plays in your voice channel.</p>
+    <div class="grid g2">
+      <div class="grid" style="align-content:start">
+        <div class="card">
+          <div class="row">
+            <div class="grow"><b id="d-gname">Bot</b><div class="muted" id="d-detail"></div></div>
+            <button class="pri" id="start" onclick="post('/api/bot/start',{})"><svg class="i"><use href="#i-power"/></svg>Start</button>
+            <button id="stop" onclick="post('/api/bot/stop',{})">Stop bot</button>
+          </div>
+          <div class="row hidden" id="pickrow" style="margin-top:12px"><span class="muted">Server</span><select id="server" class="grow" onchange="selected=this.value;render()"></select></div>
+        </div>
+        <div class="card">
+          <h2>Now playing</h2>
+          <div class="np"><div class="cover" id="d-cover"></div><div class="grow"><div class="tt" id="np" style="white-space:normal">Nothing playing</div><div class="muted" id="npstate"></div><div class="bar hidden" id="barwrap"><div id="bar"></div></div></div></div>
+          <div id="controls" class="hidden">
+            <div class="row" style="margin-top:14px">
+              <button id="pause" onclick="act({action:cur.paused?'resume':'pause'})"></button>
+              <button id="skip" onclick="act({action:'skip'})"><svg class="i f"><use href="#i-next"/></svg>Skip</button>
+              <button onclick="act({action:'leave'})" title="Stop, clear the queue, and leave the voice channel">Leave</button>
+              <button id="loop" onclick="act({action:'loop',mode:nextLoop(cur.loop)})" title="Off, this track, whole queue"></button>
+            </div>
+            <label class="check" style="margin-top:8px"><input type="checkbox" id="autoplay" onchange="act({action:'autoplay',on:this.checked})"><div>Autoplay<small>Keeps playing related songs when the queue ends</small></div></label>
+            <label class="check"><input type="checkbox" id="scauto" onchange="act({action:'autoplay_soundcloud',on:this.checked})"><div>From SoundCloud<small>Autoplay picks related SoundCloud songs instead of YouTube ones</small></div></label>
+            <div class="row" style="margin-top:10px"><span class="muted">Volume</span><input type="range" id="vol" min="0" max="200" class="grow" oninput="volDrag=true;fill(this);volv.textContent=this.value+'%'" onchange="volDrag=false;act({action:'volume',level:+this.value})"><span id="volv" class="muted" style="width:44px;text-align:right">0%</span></div>
+            <div class="muted">Applies now and is remembered for this server.</div>
+          </div>
+          <div class="muted" id="nocontrols" style="margin-top:10px">Controls appear once Lantern is in a voice channel or something is queued.</div>
+        </div>
+        <div class="card" id="recentcard"><h2>Recently played</h2><ul class="list recent" id="recent"></ul></div>
+      </div>
+      <div class="card" style="align-self:start">
+        <div class="row"><h2 class="grow" style="margin:0">Queue <span id="qcount" style="color:var(--dim)"></span></h2>
+          <button class="sm ghost" id="shuffle" onclick="act({action:'shuffle'})"><svg class="i"><use href="#i-shuffle"/></svg>Shuffle</button>
+          <button class="sm ghost" id="clear" onclick="act({action:'clear'})">Clear</button></div>
+        <div class="row" style="margin-top:12px">
+          <input type="text" id="query" class="grow" placeholder="Link or search (local: words searches the music library)" onkeydown="if(event.key==='Enter')addQuery()">
+          <button class="pri" onclick="addQuery()">Add</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input type="text" id="addpath" class="grow" placeholder="File or folder in the music library, like /music/Artist/Album" onkeydown="if(event.key==='Enter')addPath()">
+          <button onclick="addPath()" title="That file, or the folder and the folders inside it. Discord only sees track names.">Add files</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <button class="sm" onclick="$('importfile').click()" title="Queue a .m3u, .m3u8, .pls or .xspf playlist from Winamp, VLC, or Lantern. Missing files are skipped and counted."><svg class="i"><use href="#i-up"/></svg>Import playlist</button>
+          <input type="file" id="importfile" class="hidden" accept=".m3u,.m3u8,.pls,.xspf" onchange="importList(this)">
+          <span class="grow"></span>
+          <select id="expfmt"><option value="m3u8">M3U8</option><option value="m3u">M3U (Winamp)</option><option value="pls">PLS (Winamp, VLC)</option><option value="xspf">XSPF (VLC)</option></select>
+          <button class="sm" onclick="exportQueue()" title="Save what's playing and the queue as a playlist Winamp or VLC can open"><svg class="i"><use href="#i-down"/></svg>Export</button>
+        </div>
+        <div class="sp"></div>
+        <ul class="list" id="queue"></ul>
+        <div class="empty" id="qempty">Nothing queued.</div>
+      </div>
+    </div>
+  </section>
+
+  <section class="page" id="p-library">
+    <h1>Library</h1>
+    <p class="lead">Your music folders. Play here, or send to Discord.</p>
+    <div class="card">
+      <div class="search"><svg class="i"><use href="#i-search"/></svg><input type="search" id="l-q" placeholder="Search the whole library" oninput="libSearchSoon()" autocomplete="off"></div>
+      <div class="sp"></div>
+      <div id="l-browse">
+        <div class="row" style="margin-bottom:10px"><div class="crumbs grow" id="crumbs"></div>
+          <input type="text" id="bfilter" placeholder="Filter this folder" oninput="drawBrowse()" style="max-width:220px">
+        </div>
+        <div class="row hidden" id="l-here" style="margin:0 0 8px">
+          <button class="sm pri" onclick="webPath(browsed.path,'now')"><svg class="i f"><use href="#i-play"/></svg>Play folder</button>
+          <button class="sm" onclick="webPath(browsed.path,'end')"><svg class="i"><use href="#i-plus"/></svg>Add to queue</button>
+          <button class="sm" id="bqueue" onclick="queueHere()" title="Queue this folder and the folders inside it in Discord (up to 1000 songs)"><svg class="i"><use href="#i-discord"/></svg>Send to Discord</button>
+        </div>
+        <ul class="list" id="blist"></ul>
+      </div>
+      <ul class="list hidden" id="l-results"></ul>
+      <div class="muted" id="bnote" style="margin-top:8px"></div>
+    </div>
+  </section>
+
+  <section class="page" id="p-radio">
+    <h1>Radio</h1>
+    <p class="lead">Internet radio from radio-browser.info. Stations play live.</p>
+    <div class="card">
+      <form class="row" onsubmit="radioSearch(event)">
+        <input type="text" id="r_name" placeholder="Station name" maxlength="100" style="flex:2 1 160px;width:auto">
+        <input type="text" id="r_tag" placeholder="Genre, like jazz or nu metal" maxlength="100" style="flex:2 1 160px;width:auto">
+        <input type="text" id="r_country" placeholder="Country, like Germany or US" maxlength="100" style="flex:1 1 120px;width:auto">
+        <button type="submit" class="pri" id="rgo"><svg class="i"><use href="#i-search"/></svg>Search</button>
+      </form>
+      <div class="row" style="margin-top:10px;gap:4px" id="r-quick"></div>
+      <div class="sp"></div>
+      <ul class="list" id="rlist"></ul>
+      <div class="muted" id="rnote"></div>
+    </div>
+  </section>
+
+  <section class="page" id="p-settings">
+    <h1>Settings</h1>
+    <p class="lead">The same settings as the Windows app.</p>
+    <form id="settingsform" onsubmit="saveSettings(event)" class="grid">
+      <div class="card">
+        <h2>Bot</h2>
+        <div class="field"><span>Bot token</span><div><input type="password" id="s_token" autocomplete="off" placeholder="Paste a new token to replace it"><div class="muted" id="tokeninfo"></div></div></div>
+        <div class="field"><span>Owner ID</span><div><input type="text" id="s_owner" placeholder="Optional"><div class="muted">Blank: anyone can control Lantern, unless a server sets a DJ role with dj. Anyone in the voice channel can always add songs.</div></div></div>
+        <div class="field"><span>Command prefix</span><div><input type="text" id="s_prefix" style="max-width:90px"></div></div>
+        <div class="field"><span>Default volume</span><div><div class="row"><input type="range" id="s_volume" min="0" max="200" class="grow" oninput="fill(this);s_volv.textContent=this.value+'%'"><span id="s_volv" class="muted" style="width:44px;text-align:right"></span></div><div class="muted">For servers that haven't set their own volume.</div></div></div>
+        <div class="field"><span>Playlist limit</span><div><input type="number" id="s_playlist_limit" min="1" max="100"></div></div>
+        <div class="field"><span>Leave when idle (min)</span><div><input type="number" id="s_idle_minutes" min="0" max="240"><div class="muted">Leave the voice channel after this many minutes with nothing playing. 0 = never.</div></div></div>
+        <div class="field"><span>Songs per person</span><div><input type="number" id="s_max_per_user" min="0" max="1000"><div class="muted">How many songs one person (not the owner or a DJ) can have waiting. 0 = no limit.</div></div></div>
+        <div class="field"><span>Longest song (min)</span><div><input type="number" id="s_max_song_minutes" min="0" max="1440"><div class="muted">Longer songs are refused for people who aren't the owner or a DJ. 0 = any length.</div></div></div>
+      </div>
+      <div class="card">
+        <h2>Behavior</h2>
+        <label class="check"><input type="checkbox" id="s_stay_in_channel"><div>Stay in the channel after the queue ends</div></label>
+        <label class="check"><input type="checkbox" id="s_leave_alone"><div>Leave when everyone else leaves</div></label>
+        <label class="check"><input type="checkbox" id="s_song_status"><div>Show the song as the bot status</div></label>
+        <label class="check"><input type="checkbox" id="s_quiet"><div>Quiet (less Discord channel spam)<small>Hides Queued messages, Now playing cards, skip and shuffle button posts, and the restore offer after a restart. The song still shows as the bot status.</small></div></label>
+        <label class="check"><input type="checkbox" id="s_level_volume"><div>Even out volume between songs<small>Uses ReplayGain tags and YouTube's loudness figure. Applies from the next song, in Discord and the web player.</small></div></label>
+        <label class="check"><input type="checkbox" id="s_choose_result"><div>Ask which YouTube result to play</div></label>
+        <label class="check"><input type="checkbox" id="s_youtube_backup"><div>YouTube backup (yt-dlp)<small>If YouTube stops working the normal way, use yt-dlp.</small></div></label>
+        <label class="check"><input type="checkbox" id="s_update_check"><div>Check for updates at startup<small>Asks GitHub whether a newer Lantern is out and says so here. Nothing is downloaded.</small></div></label>
+        <label class="check"><input type="checkbox" id="s_start_on_open"><div>Start the bot when Lantern starts<small>The container, or the Windows window.</small></div></label>
+        <label class="check"><input type="checkbox" id="s_minimize_to_tray"><div>Minimize to the system tray<small>Windows window only; saved for it.</small></div></label>
+      </div>
+      <div class="card">
+        <h2>Music library</h2>
+        <div class="muted" id="libenv"></div>
+        <ul class="list" id="folders"></ul>
+        <div class="row" style="margin-top:8px">
+          <input type="text" id="newfolder" class="grow" placeholder="Folder inside the container, like /music">
+          <button type="button" onclick="addFolder()">Add</button>
+          <button type="button" id="rescan" onclick="post('/api/library/rescan',{}).then(loadLibrary)">Rescan</button>
+          <span class="muted" id="libtotal" style="color:var(--cyan)"></span>
+        </div>
+        <div class="muted" style="margin-top:8px">Anyone in Discord can play songs from it with /local. They only see song names.</div>
+        <h3>Startup</h3>
+        <div class="muted">"Start Lantern when I sign in to Windows" and "Install to a permanent folder" are Windows-only. In Docker the container's restart policy starts Lantern with the server.</div>
+      </div>
+      <div class="card">
+        <div class="row">
+          <button class="pri" type="submit">Save settings</button>
+          <button type="button" onclick="toggleSetup()">Setup wizard</button>
+          <button type="button" onclick="showDiag()" title="A report for bug reports. The token, Discord IDs, file paths and network addresses are removed.">Copy diagnostics</button>
+        </div>
+        <div class="muted" style="margin-top:8px">Changes apply to the next command. A new token is used after Stop bot, then Start.</div>
+        <div id="setup" class="hidden">
+          <h3>Set up Lantern</h3>
+          <ol class="steps">
+            <li>Open the <a id="portal" target="_blank" rel="noopener">Discord Developer Portal</a>, press New Application, and give it a name. On the Bot page, turn on Message Content Intent. Leave Presence and Server Members off.</li>
+            <li>On the Bot page press Reset Token and copy it. Paste it in Bot token above.</li>
+            <li id="invitestep">Save, then use the invite link to add Lantern to your server.</li>
+            <li>Your Discord user ID (Owner ID) gives you full control: Discord Settings &gt; Advanced &gt; Developer Mode, then right-click your name &gt; Copy User ID.</li>
+            <li>Save settings and press Start. The log shows "Online as …" when it works, or says what to fix.</li>
+          </ol>
+        </div>
+        <pre id="diag" class="hidden"></pre>
+      </div>
+    </form>
+  </section>
+
+  <section class="page" id="p-activity">
+    <h1>Activity</h1>
+    <p class="lead">Lantern's log, live.</p>
+    <div id="log"></div>
+  </section>
+</main>
+
+<div class="player" id="player">
+  <div class="mob-prog"><div id="m-prog"></div></div>
+  <div class="p-now" onclick="go('listen')"><div class="art" id="m-art"></div><div class="meta"><div class="tt" id="m-title">Nothing playing</div><div class="st" id="m-sub">Web player</div></div></div>
+  <div class="p-mid">
+    <div class="ctl">
+      <button class="ic hide-m" title="Previous" onclick="prev()" data-i="prev"></button>
+      <button class="big" id="m-play" title="Play / pause" onclick="toggle()"></button>
+      <button class="ic" title="Next" onclick="next(false)" data-i="next"></button>
+    </div>
+    <div class="seek"><span id="m-pos">0:00</span><input type="range" id="m-seek" min="0" max="1000" value="0" disabled><span id="m-len">0:00</span></div>
+  </div>
+  <div class="p-right">
+    <button class="ic" id="m-mute" title="Mute" onclick="mute()"></button>
+    <input type="range" id="m-vol" min="0" max="100" value="80" title="Volume (this device)">
+  </div>
+</div>
+<nav class="bnav" id="bnav"></nav>
+<div id="toast"></div>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-headphones" viewBox="0 0 24 24"><path d="M3 18v-6a9 9 0 0 1 18 0v6"/><path d="M21 19a2 2 0 0 1-2 2h-1a2 2 0 0 1-2-2v-3a2 2 0 0 1 2-2h3zM3 19a2 2 0 0 0 2 2h1a2 2 0 0 0 2-2v-3a2 2 0 0 0-2-2H3z"/></symbol>
+  <symbol id="i-discord" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-radio" viewBox="0 0 24 24"><circle cx="12" cy="12" r="2"/><path d="M4.9 19.1a10 10 0 0 1 0-14.2M7.8 16.2a6 6 0 0 1 0-8.4M16.2 7.8a6 6 0 0 1 0 8.4M19.1 4.9a10 10 0 0 1 0 14.2"/></symbol>
+  <symbol id="i-sliders" viewBox="0 0 24 24"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6"/></symbol>
+  <symbol id="i-activity" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><path d="M7 4.5v15a1 1 0 0 0 1.5.86l12.5-7.5a1 1 0 0 0 0-1.72L8.5 3.64A1 1 0 0 0 7 4.5z"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><rect x="5.5" y="4" width="4.5" height="16" rx="1.2"/><rect x="14" y="4" width="4.5" height="16" rx="1.2"/></symbol>
+  <symbol id="i-next" viewBox="0 0 24 24"><path d="M5 5.2v13.6a1 1 0 0 0 1.6.8l9.4-6.8a1 1 0 0 0 0-1.6L6.6 4.4A1 1 0 0 0 5 5.2z"/><rect x="17" y="4" width="2.6" height="16" rx="1"/></symbol>
+  <symbol id="i-prev" viewBox="0 0 24 24"><path d="M19 5.2v13.6a1 1 0 0 1-1.6.8L8 12.8a1 1 0 0 1 0-1.6l9.4-6.8a1 1 0 0 1 1.6.8z"/><rect x="4.4" y="4" width="2.6" height="16" rx="1"/></symbol>
+  <symbol id="i-shuffle" viewBox="0 0 24 24"><path d="M16 3h5v5M4 20L21 3M21 16v5h-5M15 15l6 6M4 4l5 5"/></symbol>
+  <symbol id="i-repeat" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/></symbol>
+  <symbol id="i-repeat1" viewBox="0 0 24 24"><path d="M17 1l4 4-4 4"/><path d="M3 11V9a4 4 0 0 1 4-4h14M7 23l-4-4 4-4"/><path d="M21 13v2a4 4 0 0 1-4 4H3"/><path d="M11 10h1v4"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-next-up" viewBox="0 0 24 24"><path d="M3 6h12M3 12h12M3 18h7M18 14v7M14.5 17.5h7"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6L6 18M6 6l12 12"/></symbol>
+  <symbol id="i-chev-up" viewBox="0 0 24 24"><path d="M18 15l-6-6-6 6"/></symbol>
+  <symbol id="i-chev-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+  <symbol id="i-music" viewBox="0 0 24 24"><path d="M9 18V5l12-2v13"/><circle cx="6" cy="18" r="3"/><circle cx="18" cy="16" r="3"/></symbol>
+  <symbol id="i-vol" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M15.5 8.5a5 5 0 0 1 0 7M19 5a10 10 0 0 1 0 14"/></symbol>
+  <symbol id="i-mute" viewBox="0 0 24 24"><path d="M11 5L6 9H2v6h4l5 4V5z"/><path d="M23 9l-6 6M17 9l6 6"/></symbol>
+  <symbol id="i-power" viewBox="0 0 24 24"><path d="M18.36 6.64a9 9 0 1 1-12.73 0M12 2v10"/></symbol>
+  <symbol id="i-up" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M17 8l-5-5-5 5M12 3v12"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4M7 10l5 5 5-5M12 15V3"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24"><path d="M18 13v6a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h6M15 3h6v6M10 14L21 3"/></symbol>
+  <symbol id="i-replay" viewBox="0 0 24 24"><path d="M1 4v6h6"/><path d="M3.5 15a9 9 0 1 0 2.1-9.4L1 10"/></symbol>
+</svg>
+<script>
+const $=id=>document.getElementById(id);
+const FILLED=new Set(['play','pause','next','prev']);
+function ic(name){return `<svg class="i${FILLED.has(name)?' f':''}"><use href="#i-${name}"/></svg>`}
+function esc(t){return String(t??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+function clock(s){s=Math.max(0,Math.floor(s||0));const h=Math.floor(s/3600),m=Math.floor(s%3600/60),x=String(s%60).padStart(2,'0');return h?`${h}:${String(m).padStart(2,'0')}:${x}`:`${m}:${x}`}
+function toast(t){if(!t)return;const e=$('toast');e.textContent=t;e.classList.add('on');clearTimeout(toast.h);toast.h=setTimeout(()=>e.classList.remove('on'),3800)}
+function fill(r){const min=+r.min||0,max=+r.max||100;r.style.setProperty('--p',((+r.value-min)/(max-min)*100)+'%')}
+async function getJSON(url){const r=await fetch(url);const j=await r.json().catch(()=>({}));if(!r.ok)throw new Error(j.error||('HTTP '+r.status));return j}
+async function post(url,body,quiet){
+  try{const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(body)});
+    const j=await r.json().catch(()=>({}));if(!quiet||!r.ok)toast(j.error||j.message);refresh();return {ok:r.ok,...j}}
+  catch(e){toast('Lantern is not answering.');return {ok:false}}
+}
+const chipFor=s=>({YouTube:'yt',SoundCloud:'sc',Library:'lib',Radio:'radio'}[s]||'');
+/* An icon with the picture over it; a picture that fails to load just goes away. */
+function artHTML(src,fallback){return ic(fallback)+(src?`<img src="${esc(src)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.remove()">`:'')}
+
+/* ------------------------------------------------------------ navigation */
+const PAGES=[['listen','Listen','headphones'],['discord','Discord','discord'],['library','Library','folder'],['radio','Radio','radio'],['settings','Settings','sliders'],['activity','Activity','activity']];
+const navHTML=PAGES.map(([id,n,i])=>`<a data-p="${id}" href="#${id}">${ic(i)}<span>${n}</span></a>`).join('');
+$('nav').innerHTML=navHTML;$('bnav').innerHTML=navHTML;
+document.querySelectorAll('[data-i]').forEach(b=>b.innerHTML=ic(b.dataset.i));
+$('h-shuffle').innerHTML=ic('shuffle');
+function go(p){if(!PAGES.some(x=>x[0]===p))p='listen';
+  document.querySelectorAll('.page').forEach(s=>s.classList.toggle('on',s.id==='p-'+p));
+  document.querySelectorAll('[data-p]').forEach(a=>a.classList.toggle('on',a.dataset.p===p));
+  if(location.hash!=='#'+p)history.replaceState(null,'','#'+p);try{localStorage.setItem('lantern.page',p)}catch(e){}
+  if(p==='activity'){const el=$('log');el.scrollTop=el.scrollHeight}
+  window.scrollTo(0,0)}
+window.addEventListener('hashchange',()=>go(location.hash.slice(1)));
+
+/* ------------------------------------------------------------ web player */
+const audio=new Audio();audio.preload='none';
+let wq={entries:[],current:null,repeat:'off'};
+let loadedId=null, offset=0, wantPlay=false, seeking=false, retry=0, retryTimer=null, failSkip=null;
+const curEntry=()=>wq.entries.find(e=>e.id===wq.current)||null;
+const loadedEntry=()=>wq.entries.find(e=>e.id===loadedId)||null;
+function pos(){return offset+(audio.currentTime||0)}
+async function loadQueue(){try{wq=await getJSON('/api/web')}catch(e){return}drawWeb()}
+async function wact(body){const r=await post('/api/web/action',body,true);if(r.queue){wq=r.queue;drawWeb()}return r}
+function start(id,t){
+  clearTimeout(retryTimer);clearTimeout(failSkip);
+  const e=wq.entries.find(x=>x.id===id);if(!e){stopAudio();return}
+  loadedId=id;offset=e.live?0:(t||0);wantPlay=true;
+  audio.src=`/api/web/stream/${id}?t=${offset.toFixed(2)}&n=${Date.now()}`;
+  audio.play().catch(err=>{if(err&&err.name==='NotAllowedError'){wantPlay=false;drawPlayer()}});
+  drawWeb();mediaSession()}
+function stopAudio(){wantPlay=false;clearTimeout(retryTimer);audio.pause();audio.removeAttribute('src');audio.load();loadedId=null;offset=0;drawWeb()}
+async function playId(id){const r=await wact({action:'play',id});if(r.ok)start(id,0)}
+function toggle(){
+  const e=loadedEntry();
+  if(wantPlay){wantPlay=false;audio.pause();if(e&&e.live){audio.removeAttribute('src');audio.load();loadedId=null}drawWeb();return}
+  if(e&&!e.live&&audio.getAttribute('src')){wantPlay=true;audio.play().catch(()=>start(e.id,pos()));drawWeb();return}
+  const c=curEntry();if(c){start(c.id,0);return}
+  if(wq.entries.length){playId(wq.entries[0].id);return}
+  toast('The web queue is empty. Search for something to play.')}
+async function next(ended){const r=await wact({action:'next',ended:!!ended});if(!r.ok)return;if(wq.current)start(wq.current,0);else{stopAudio();if(ended)toast('End of the web queue.')}}
+async function prev(){const e=loadedEntry();if(e&&!e.live&&pos()>4){start(e.id,0);return}const r=await wact({action:'previous'});if(r.ok&&wq.current)start(wq.current,0)}
+function seekTo(frac){const e=loadedEntry()||curEntry();if(!e||e.live||!e.length)return;start(e.id,Math.max(0,Math.min(e.length-1,frac*e.length)))}
+function cycleRepeat(){const n={off:'all',all:'one',one:'off'}[wq.repeat]||'off';wact({action:'repeat',mode:n}).then(()=>toast('Repeat: '+({off:'off',all:'whole queue',one:'this song'}[n])))}
+audio.addEventListener('ended',()=>{const e=loadedEntry();if(e&&e.live){reconnect();return}next(true)});
+audio.addEventListener('playing',()=>{retry=0;drawPlayer()});
+audio.addEventListener('pause',drawPlayer);
+audio.addEventListener('waiting',drawPlayer);
+audio.addEventListener('error',async()=>{
+  if(!audio.getAttribute('src')||!loadedId||!wantPlay)return;
+  const e=loadedEntry();await loadQueue();const after=loadedEntry();
+  if(e&&e.live&&!(after&&after.error)){reconnect();return}
+  if(after&&after.error){toast(`${after.title}: ${after.error}`);failSkip=setTimeout(()=>{if(loadedId===after.id)next(false)},2500);return}
+  if(retry<2&&e){retry++;start(e.id,pos());return}
+  toast('That song stopped playing.');next(false)});
+function reconnect(){const e=loadedEntry();if(!e||!wantPlay)return;const wait=[2,5,10,20,30][Math.min(retry,4)];retry++;
+  $('h-hint').textContent=`Station dropped. Reconnecting in ${wait} s…`;clearTimeout(retryTimer);retryTimer=setTimeout(()=>{if(loadedId===e.id&&wantPlay)start(e.id,0)},wait*1000)}
+let vol=+(localStorage.getItem('lantern.vol')??80), muted=localStorage.getItem('lantern.muted')==='1';
+function applyVol(){audio.volume=muted?0:Math.pow(vol/100,2);$('m-vol').value=vol;fill($('m-vol'));$('m-mute').innerHTML=ic(muted||vol==0?'mute':'vol');try{localStorage.setItem('lantern.vol',vol);localStorage.setItem('lantern.muted',muted?'1':'0')}catch(e){}}
+function mute(){muted=!muted;applyVol()}
+$('m-vol').addEventListener('input',e=>{vol=+e.target.value;muted=false;applyVol()});
+for(const id of ['h-seek','m-seek']){const r=$(id);
+  r.addEventListener('input',()=>{seeking=true;fill(r);const e=loadedEntry()||curEntry();if(e&&e.length)$(id==='h-seek'?'h-pos':'m-pos').textContent=clock(r.value/1000*e.length)});
+  r.addEventListener('change',()=>{seeking=false;seekTo(r.value/1000)})}
+function mediaSession(){if(!('mediaSession' in navigator))return;const e=loadedEntry()||curEntry();if(!e)return;
+  const art=[{src:new URL(e.art||'/icon.png',location.href).href}];
+  try{navigator.mediaSession.metadata=new MediaMetadata({title:e.title,artist:e.live?'Live radio':e.source,album:'Lantern',artwork:art})}catch(x){}}
+if('mediaSession' in navigator){const ms=navigator.mediaSession;
+  try{ms.setActionHandler('play',()=>toggle());ms.setActionHandler('pause',()=>toggle());
+  ms.setActionHandler('nexttrack',()=>next(false));ms.setActionHandler('previoustrack',()=>prev())}catch(e){}}
+function subline(e){if(!e)return '';const chip=e.live?'<span class="chip live">Live</span>':`<span class="chip ${chipFor(e.source)}">${esc(e.source)}</span>`;
+  return chip+(e.error?` <span class="err">${esc(e.error)}</span>`:'')}
+function setArt(el,e,cls){const want=e&&e.art?e.art:'',k=want+'|'+(e&&e.live);if(el.dataset.k===k&&el.innerHTML)return;el.dataset.k=k;
+  if(cls)el.className=cls+(e&&e.source==='YouTube'?' yt':'');el.innerHTML=artHTML(want,e&&e.live?'radio':'music')}
+function drawPlayer(){
+  const e=loadedEntry()||curEntry();const playing=wantPlay;
+  const playIcon=ic(playing?'pause':'play');$('h-play').innerHTML=playIcon;$('m-play').innerHTML=playIcon;
+  $('h-repeat').innerHTML=ic(wq.repeat==='one'?'repeat1':'repeat');$('h-repeat').classList.toggle('on',wq.repeat!=='off');
+  $('h-repeat').title='Repeat: '+({off:'off',all:'whole queue',one:'this song'}[wq.repeat]||'off');
+  const title=e?e.title:'Nothing playing';$('h-title').textContent=title;$('m-title').textContent=title;
+  $('h-sub').innerHTML=e?subline(e)+(e.link?` <a href="${esc(e.link)}" target="_blank" rel="noopener" title="Open the source">${ic('link')}</a>`:''):'';
+  $('m-sub').innerHTML=e?subline(e):'Web player';
+  setArt($('h-cover'),e,'cover');setArt($('m-art'),e,'art');
+  const h=$('h-hint');
+  if(retryTimer&&wantPlay&&e&&e.live){}
+  else if(!e)h.textContent=wq.entries.length?'Press play to start.':'Search or paste a link, or add songs from Library and Radio.';
+  else if(!wantPlay)h.textContent=e.live?'Live radio. Press play to tune in.':(loadedId?'Paused.':'Press play to start.');
+  else if(audio.readyState<3)h.textContent='Loading…';
+  else h.textContent=e.live?'Live on this device':'Playing on this device';
+  tick()}
+function tick(){
+  const e=loadedEntry()||curEntry();const live=!!(e&&e.live), len=e&&e.length||0;
+  const p=loadedId?pos():0;
+  for(const [r,a,b] of [['h-seek','h-pos','h-len'],['m-seek','m-pos','m-len']]){const el=$(r);
+    el.disabled=!e||live||!len;
+    if(!seeking){el.value=len?Math.min(1000,p/len*1000):0;fill(el);$(a).textContent=live?'LIVE':clock(p)}
+    $(b).textContent=live?'':len?clock(len):'--:--'}
+  $('m-prog').style.width=(len&&!live?Math.min(100,p/len*100):0)+'%'}
+setInterval(tick,500);
+function drawWeb(){
+  const list=wq.entries, ci=list.findIndex(e=>e.id===wq.current);
+  $('w-count').textContent=list.length?`· ${list.length}`:'';
+  $('w-clear').disabled=!list.length;$('w-clearplayed').disabled=ci<=0;
+  const html=list.map((e,i)=>{const cur=e.id===wq.current;
+    return `<li class="item${cur?' cur':''}" draggable="true" data-id="${e.id}" data-i="${i}">
+      <span class="n">${cur&&wantPlay?ic('vol'):i+1}</span>
+      <div class="art" onclick="playId(${e.id})" style="cursor:pointer">${artHTML(e.art,e.live?'radio':'music')}</div>
+      <div class="meta" onclick="playId(${e.id})" style="cursor:pointer"><div class="tt" title="${esc(e.title)}">${esc(e.title)}</div><div class="st">${subline(e)}</div></div>
+      <span class="len">${e.live?'':e.length?clock(e.length):''}</span>
+      <div class="acts hov">
+        <button class="ic hide-m" title="Move up" ${i?'':'disabled'} onclick="wmove(${e.id},${i-1})">${ic('chev-up')}</button>
+        <button class="ic hide-m" title="Move down" ${i<list.length-1?'':'disabled'} onclick="wmove(${e.id},${i+1})">${ic('chev-down')}</button>
+        <button class="ic" title="Remove" onclick="wremove(${e.id})">${ic('x')}</button>
+      </div></li>`}).join('');
+  const el=$('w-list');
+  const out=html||`<li class="empty">${ic('headphones')}Nothing in the web queue yet.<br>Search above, or add songs from Library and Radio.</li>`;
+  if(el.dataset.h!==out){el.dataset.h=out;el.innerHTML=out}
+  $('h-shuffle').disabled=list.length-ci-1<2;
+  drawPlayer()}
+function wmove(id,to){wact({action:'move',id,to})}
+async function wremove(id){const was=id===loadedId&&wantPlay;const r=await wact({action:'remove',id});if(r.ok&&was){if(wq.current)start(wq.current,0);else stopAudio()}}
+let dragId=null;
+const wl=$('w-list');
+wl.addEventListener('dragstart',ev=>{const li=ev.target.closest('.item');if(!li)return;dragId=+li.dataset.id;li.classList.add('drag');ev.dataTransfer.effectAllowed='move';ev.dataTransfer.setData('text/plain',li.dataset.id)});
+wl.addEventListener('dragend',()=>{dragId=null;wl.querySelectorAll('.item').forEach(li=>li.classList.remove('drag','over'))});
+wl.addEventListener('dragover',ev=>{const li=ev.target.closest('.item');if(!li||dragId===null)return;ev.preventDefault();wl.querySelectorAll('.over').forEach(x=>x.classList.remove('over'));li.classList.add('over')});
+wl.addEventListener('drop',ev=>{const li=ev.target.closest('.item');if(!li||dragId===null)return;ev.preventDefault();const id=dragId;dragId=null;wmove(id,+li.dataset.i)});
+async function webAdd(body,mode){
+  const r=await post('/api/web/add',{...body,mode});if(!r.ok)return r;
+  if(r.queue){wq=r.queue;drawWeb()}
+  if(mode==='now'&&wq.current)start(wq.current,0);
+  return r}
+function webPath(path,mode){if(path)webAdd({path},mode)}
+function webStation(i,mode){const s=stations[i];if(s)webAdd({uuid:s.uuid},mode)}
+let results=[];
+async function wsearch(){
+  const q=$('w-q').value.trim();if(!q)return;
+  if(/^https?:\/\//i.test(q)){toast('Looking it up…');const r=await webAdd({query:q},'end');if(r.ok)$('w-q').value='';return}
+  $('w-results').classList.remove('hidden');$('w-rlist').innerHTML='<li class="empty">Searching…</li>';
+  try{const j=await getJSON('/api/web/search?q='+encodeURIComponent(q));results=j.results||[];
+    $('w-rlist').innerHTML=results.map((x,i)=>`<li class="item"><div class="art">${artHTML(x.art,'music')}</div>
+      <div class="meta"><div class="tt" title="${esc(x.title)}">${esc(x.title)}</div><div class="st"><span class="chip ${chipFor(x.source)}">${esc(x.source)}</span>${esc(x.by||'')}</div></div>
+      <span class="len">${x.length?clock(x.length):''}</span>
+      <div class="acts"><button class="ic" title="Play now" onclick="addResult(${i},'now')">${ic('play')}</button><button class="ic hide-m" title="Play next" onclick="addResult(${i},'next')">${ic('next-up')}</button><button class="ic" title="Add to queue" onclick="addResult(${i},'end')">${ic('plus')}</button></div></li>`).join('')||'<li class="empty">No results.</li>'}
+  catch(e){$('w-rlist').innerHTML=`<li class="empty">${esc(e.message)}</li>`}}
+function addResult(i,mode){const x=results[i];if(x)webAdd({query:x.link},mode)}
+function closeResults(){$('w-results').classList.add('hidden');results=[]}
+
+/* ------------------------------------------------------------ Discord */
+let state=null, selected=null, cur=null, volDrag=false, logNext=0, settings=null;
+const SETTINGS_TEXT=['owner','prefix'], SETTINGS_NUM=['volume','playlist_limit','idle_minutes','max_per_user','max_song_minutes'],
+ SETTINGS_BOOL=['stay_in_channel','leave_alone','song_status','quiet','level_volume','choose_result','youtube_backup','update_check','start_on_open','minimize_to_tray'];
+const NEED_VOICE='Lantern needs to be in a voice channel first, or start the bot.';
+function act(body){if(cur)return post('/api/guild/'+cur.id,body);toast(NEED_VOICE);return Promise.resolve({ok:false})}
+function nextLoop(m){return {off:'track',track:'queue',queue:'off'}[m]||'off'}
+async function refresh(){
+  try{state=await (await fetch('/api/status')).json()}catch(e){for(const [c,d] of [['conn','dot'],['conn2','dot2']]){$(c).textContent='Not reachable';$(d).className='dot'}return}
+  render()}
+function setHTML(el,html){if(el.dataset.h!==html){el.dataset.h=html;el.innerHTML=html}}
+function render(){
+  const s=state;if(!s)return;
+  $('ver').textContent='Version '+s.version;
+  const cls={Online:'ok',Playing:'busy',Connecting:'busy',Paused:'busy'}[s.connection]||'';
+  for(const [c,d] of [['conn','dot'],['conn2','dot2']]){$(c).textContent=(c==='conn'?'Discord: ':'')+s.connection;$(d).className='dot '+cls}
+  $('start').disabled=s.running||!s.token_set;$('start').title=s.token_set?'':'Paste your bot token in Settings first';
+  $('stop').disabled=!s.running&&!s.wanted;
+  const u=$('update');if(s.update){setHTML(u,`<span class="grow">Lantern ${esc(s.update.version)} is available.</span><a href="${esc(s.update.link)}" target="_blank" rel="noopener">Open the release page</a>`);u.classList.remove('hidden')}else u.classList.add('hidden');
+  if(s.save_warning){$('warntext').textContent=s.save_warning;$('warn').classList.remove('hidden')}else $('warn').classList.add('hidden');
+  const gs=s.guilds;if(!gs.some(g=>g.id===selected))selected=gs.length?gs[0].id:null;
+  cur=gs.find(g=>g.id===selected)||null;
+  $('pickrow').classList.toggle('hidden',gs.length<2);
+  setHTML($('server'),gs.map(g=>`<option value="${g.id}"${g.id===selected?' selected':''}>${esc(g.name)}</option>`).join(''));
+  $('d-gname').textContent=cur?cur.name:'Bot';$('d-detail').textContent=s.connection+(s.detail?' · '+s.detail:'');
+  $('np').textContent=cur&&cur.current?cur.current:(s.title||'Nothing playing');
+  setHTML($('d-cover'),ic(cur&&cur.current?(cur.live?'radio':'music'):'discord'));
+  if(cur&&cur.current){const t=cur.live?`LIVE · ${clock(cur.position)}`:cur.length?`${clock(cur.position)} / ${clock(cur.length)}`:clock(cur.position);
+    $('npstate').textContent=(cur.paused?'Paused':'Playing')+' · '+t;$('npstate').style.color=cur.paused?'var(--cyan)':'';
+    $('barwrap').classList.toggle('hidden',!cur.length);if(cur.length)$('bar').style.width=Math.min(100,cur.position/cur.length*100)+'%'}
+  else{$('npstate').textContent=s.detail;$('npstate').style.color='';$('barwrap').classList.add('hidden')}
+  $('controls').classList.toggle('hidden',!cur);$('nocontrols').classList.toggle('hidden',!!cur);
+  if(cur){const playing=!!cur.current;$('pause').disabled=!playing;$('skip').disabled=!playing;
+    setHTML($('pause'),cur.paused?ic('play')+'Resume':ic('pause')+'Pause');
+    setHTML($('loop'),ic(cur.loop==='track'?'repeat1':'repeat')+'Loop: '+cur.loop);$('loop').classList.toggle('on',cur.loop!=='off');
+    $('autoplay').checked=cur.autoplay;$('scauto').checked=cur.soundcloud_autoplay;
+    if(!volDrag){$('vol').value=cur.volume;fill($('vol'));$('volv').textContent=cur.volume+'%'}}
+  const up=cur?cur.upcoming:[];$('qcount').textContent=up.length?`· ${up.length} up next`:'';
+  $('shuffle').disabled=up.length<2;$('clear').disabled=!up.length;
+  $('qempty').textContent=cur?'Nothing queued after this song.':'Nothing queued.';$('qempty').classList.toggle('hidden',up.length>0);
+  setHTML($('queue'),up.map((t,i)=>`<li class="item" style="min-height:44px"><span class="n">${i+1}</span><div class="meta"><div class="tt" title="${esc(t)}">${esc(t)}</div></div><div class="acts hov"><button class="ic" ${i?'':'disabled'} onclick="act({action:'move',from:${i+1},to:${i}})" title="Move up">${ic('chev-up')}</button><button class="ic" ${i<up.length-1?'':'disabled'} onclick="act({action:'move',from:${i+1},to:${i+2}})" title="Move down">${ic('chev-down')}</button><button class="ic" onclick="act({action:'remove',position:${i+1}})" title="Remove">${ic('x')}</button></div></li>`).join(''));
+  const rec=cur?cur.recent:[];
+  setHTML($('recent'),rec.length?rec.map((p,i)=>`<li class="item" onclick="replay(${i})" title="Click to queue it again in Discord"><div class="art" style="width:32px;height:32px">${ic('replay')}</div><div class="meta"><div class="tt">${esc(p.title)}</div></div></li>`).join(''):'<li class="muted" style="padding:6px 0">Nothing yet.</li>');
+  drawBrowseNote()}
+function replay(i){const p=cur&&cur.recent[i];if(p)act({action:'replay',at:p.at,title:p.title})}
+function addQuery(){const q=$('query').value.trim();if(!q)return;if(!cur){toast(NEED_VOICE);return}act({action:'play',query:q}).then(r=>{if(r&&r.ok)$('query').value=''});toast('Looking it up…')}
+function addPath(){const p=$('addpath').value.trim();if(!p)return;if(!cur){toast('Start the bot to add files.');return}act({action:'add_path',path:p})}
+function importList(input){const f=input.files[0];input.value='';if(!f)return;if(!cur){toast('Start the bot to import.');return}
+  f.text().then(text=>act({action:'import',name:f.name,text}))}
+async function exportQueue(){if(!cur){toast('Nothing to export.');return}
+  const fmt=$('expfmt').value;const r=await fetch(`/api/guild/${cur.id}/export?format=${fmt}`);
+  if(!r.ok){const j=await r.json().catch(()=>({}));toast(j.error||'Export failed');return}
+  const b=await r.blob();const a=document.createElement('a');a.href=URL.createObjectURL(b);a.download='Lantern queue.'+fmt;a.click();setTimeout(()=>URL.revokeObjectURL(a.href),5000);toast('Exported.')}
+
+/* ------------------------------------------------------------ settings */
+async function loadSettings(){
+  settings=await (await fetch('/api/settings')).json();
+  for(const k of SETTINGS_TEXT)$('s_'+k).value=settings[k];
+  for(const k of SETTINGS_NUM)$('s_'+k).value=settings[k];
+  for(const k of SETTINGS_BOOL)$('s_'+k).checked=settings[k];
+  $('s_volv').textContent=settings.volume+'%';fill($('s_volume'));$('s_token').value='';
+  $('tokeninfo').textContent=(settings.token_set?'Set. It is never shown here; paste a new one to replace it.':'Not set yet. Paste the token from the Discord Developer Portal.')+(settings.token_from_env?' DISCORD_TOKEN is set on the container and is used at every start.':'');
+  loadLibrary()}
+async function loadLibrary(){
+  const l=await (await fetch('/api/library')).json();
+  $('libenv').textContent=l.from_env?`LANTERN_LIBRARY=${l.from_env} is set on the container, so these folders are reset to it at every start.`:'';
+  $('folders').innerHTML=l.folders.map((f,i)=>`<li class="item" style="min-height:44px"><div class="art" style="width:32px;height:32px">${ic('folder')}</div><div class="meta"><div class="tt">${esc(f.folder)}</div><div class="st" style="${f.problem?'color:var(--red)':''}">${f.tracks} tracks${f.problem?' · '+esc(f.problem):''}</div></div><button type="button" class="ic" onclick="removeFolder(${i})" title="Remove this folder from the library">${ic('x')}</button></li>`).join('');
+  $('libtotal').textContent=l.scanning?'Scanning…':`${l.total} tracks`;$('rescan').disabled=l.scanning||!l.folders.length;
+  if(l.scanning)setTimeout(loadLibrary,2000)}
+async function saveFolders(list){const r=await post('/api/settings',{library_folders:list});if(r.ok)loadSettings()}
+function addFolder(){const f=$('newfolder').value.trim();if(!f)return;$('newfolder').value='';saveFolders([...settings.library_folders,f])}
+function removeFolder(i){saveFolders(settings.library_folders.filter((_,j)=>j!==i))}
+async function saveSettings(e){e.preventDefault();
+  const body={};for(const k of SETTINGS_TEXT)body[k]=$('s_'+k).value;for(const k of SETTINGS_NUM){const v=$('s_'+k).value;body[k]=v===''?0:Math.round(+v)}
+  for(const k of SETTINGS_BOOL)body[k]=$('s_'+k).checked;const t=$('s_token').value.trim();if(t)body.token=t;
+  const r=await post('/api/settings',body);if(r.ok){loadSettings();loadSetup()}}
+async function loadSetup(){const s=await (await fetch('/api/setup')).json();$('portal').href=s.portal;
+  $('invitestep').innerHTML=s.invite?`Open <a href="${esc(s.invite)}" target="_blank" rel="noopener">this invite link</a>, pick your server, and press Authorize.`:'Save the token first, then the invite link shows here.'}
+function toggleSetup(){$('setup').classList.toggle('hidden');loadSetup()}
+async function showDiag(){const t=await (await fetch('/api/diagnostics')).text();const d=$('diag');d.textContent=t;d.classList.remove('hidden');
+  try{await navigator.clipboard.writeText(t);toast('Diagnostics copied (token, IDs, paths and addresses removed).')}catch(e){toast('Shown below. Select it and copy.')}}
+function dismiss(){post('/api/dismiss',{})}
+async function pollLog(){
+  try{const j=await (await fetch('/api/log?since='+logNext)).json();
+    if(j.next<logNext)logNext=0;
+    if(j.lines.length){const el=$('log');const stick=el.scrollTop+el.clientHeight>=el.scrollHeight-30;
+      el.textContent+=(el.textContent?'\n':'')+j.lines.join('\n');
+      const lines=el.textContent.split('\n');if(lines.length>800)el.textContent=lines.slice(-800).join('\n');
+      if(stick)el.scrollTop=el.scrollHeight}
+    logNext=j.next}catch(e){}}
+
+/* ------------------------------------------------------------ library */
+let browsed=null, libHits=[];
+async function openFolder(path){
+  const r=await fetch('/api/browse?path='+encodeURIComponent(path||''));const j=await r.json().catch(()=>({}));
+  if(!r.ok){toast(j.error||'Could not open that folder.');return}
+  browsed=j;$('bfilter').value='';drawBrowse()}
+function songRow(x,i,src){const main=esc(x.title||x.name);const sub=[x.artist,x.album].filter(Boolean).map(esc).join(' · ');
+  return `<li class="item"><div class="art">${ic('music')}</div><div class="meta"><div class="tt" title="${esc(x.name||x.title)}">${main}</div><div class="st">${sub||'&nbsp;'}</div></div>
+    <span class="len">${x.length?clock(x.length):''}</span>
+    <div class="acts"><button class="ic" title="Play here now" onclick="webPath(${src}[${i}].path,'now')">${ic('play')}</button><button class="ic" title="Add to the web queue" onclick="webPath(${src}[${i}].path,'end')">${ic('plus')}</button><button class="ic hide-m" title="Send to Discord" onclick="queuePath(${src}[${i}].path)">${ic('discord')}</button></div></li>`}
+function drawBrowse(){
+  const b=browsed;if(!b)return;
+  $('crumbs').innerHTML=[`<a onclick="openFolder('')">Library</a>`].concat(b.crumbs.map((c,i)=>`<span>›</span><a onclick="openFolder(browsed.crumbs[${i}].path)">${esc(c.name)}</a>`)).join('');
+  $('l-here').classList.toggle('hidden',!b.path);
+  const f=$('bfilter').value.trim().toLowerCase();
+  const hit=e=>!f||[e.name,e.title,e.artist,e.album].some(x=>x&&x.toLowerCase().includes(f));
+  const dirs=b.folders.map((d,i)=>[d,i]).filter(([d])=>hit(d)), files=b.files.map((x,i)=>[x,i]).filter(([x])=>hit(x));
+  const rows=dirs.map(([d,i])=>`<li class="item"><div class="art" style="color:var(--cyan);cursor:pointer" onclick="openFolder(browsed.folders[${i}].path)">${ic('folder')}</div><div class="meta" style="cursor:pointer" onclick="openFolder(browsed.folders[${i}].path)"><div class="tt">${esc(d.name)}</div></div>${b.path?`<div class="acts"><button class="ic" title="Play this folder here" onclick="webPath(browsed.folders[${i}].path,'now')">${ic('play')}</button><button class="ic" title="Add this folder to the web queue" onclick="webPath(browsed.folders[${i}].path,'end')">${ic('plus')}</button><button class="ic hide-m" title="Send this folder to Discord" onclick="queuePath(browsed.folders[${i}].path)">${ic('discord')}</button></div>`:''}</li>`)
+   .concat(files.map(([x,i])=>songRow(x,i,'browsed.files')));
+  $('blist').innerHTML=rows.join('')||`<li class="empty">${ic('folder')}${f?'Nothing here matches.':(b.path?'No folders or songs here.':'No music library folders. Add one in Settings.')}</li>`;
+  drawBrowseNote()}
+function drawBrowseNote(){const b=browsed;if(!b||!$('l-results').classList.contains('hidden'))return;
+  $('bnote').textContent=b.path?`${b.folders.length} folder${b.folders.length==1?'':'s'}, ${b.files.length} song${b.files.length==1?'':'s'}`+(cur?` · Discord: ${cur.name}`:''):''}
+function queuePath(path){if(!cur){toast(NEED_VOICE);return}act({action:'add_path',path})}
+function queueHere(){if(browsed&&browsed.path)queuePath(browsed.path)}
+let libTimer=null;
+function libSearchSoon(){clearTimeout(libTimer);libTimer=setTimeout(libSearch,250)}
+async function libSearch(){const q=$('l-q').value.trim();
+  $('l-browse').classList.toggle('hidden',!!q);$('l-results').classList.toggle('hidden',!q);
+  if(!q){drawBrowseNote();return}
+  try{const j=await getJSON('/api/web/library?q='+encodeURIComponent(q));libHits=j.tracks||[];
+    $('l-results').innerHTML=libHits.map((x,i)=>songRow(x,i,'libHits')).join('')||`<li class="empty">${ic('search')}Nothing in the library matches.</li>`;
+    $('bnote').textContent=libHits.length?`${libHits.length}${libHits.length==100?'+':''} song${libHits.length==1?'':'s'}`:''}catch(e){toast(e.message)}}
+
+/* ------------------------------------------------------------ radio */
+let stations=[];
+const QUICK=['nu metal','rock','jazz','lofi','classical','hip hop','electronic','country','80s','metal'];
+$('r-quick').innerHTML=QUICK.map(t=>`<button class="sm ghost" type="button" onclick="quickTag('${t}')">${esc(t)}</button>`).join('');
+function quickTag(t){$('r_name').value='';$('r_country').value='';$('r_tag').value=t;radioSearch()}
+async function radioSearch(e){
+  if(e)e.preventDefault();
+  const q={name:$('r_name').value.trim(),tag:$('r_tag').value.trim(),country:$('r_country').value.trim()};
+  if(!q.name&&!q.tag&&!q.country){toast('Type a station name, a genre like jazz, or a country.');return}
+  $('rgo').disabled=true;$('rnote').textContent='';$('rlist').innerHTML='<li class="empty">Searching…</li>';
+  try{const r=await fetch('/api/radio/search?'+new URLSearchParams(q));const j=await r.json().catch(()=>({}));
+    if(!r.ok){stations=[];$('rlist').innerHTML='';$('rnote').textContent=j.error||'Radio search failed.';return}
+    stations=j.stations||[];drawRadio()}
+  finally{$('rgo').disabled=false}}
+function drawRadio(){
+  const rows=stations.map((s,i)=>{const fmt=[s.codec,s.bitrate?s.bitrate+' kbps':''].filter(Boolean).join(' ');
+    const sub=[s.country,(s.tags||[]).slice(0,4).join(', '),fmt].filter(Boolean).map(esc).join(' · ');
+    return `<li class="item"><div class="art">${artHTML(s.favicon,'radio')}</div><div class="meta"><div class="tt" title="${esc(s.name)}">${esc(s.name)}</div><div class="st">${sub}</div></div>
+      <div class="acts"><button class="ic" title="Play here now" onclick="webStation(${i},'now')">${ic('play')}</button><button class="ic" title="Add to the web queue" onclick="webStation(${i},'end')">${ic('plus')}</button><button class="ic" title="Send to Discord" onclick="queueStation(${i})">${ic('discord')}</button></div></li>`});
+  $('rlist').innerHTML=rows.join('')||`<li class="empty">${ic('radio')}No stations match.</li>`;
+  $('rnote').textContent=stations.length?`${stations.length} station${stations.length==1?'':'s'}`:''}
+function queueStation(i){const s=stations[i];if(!s)return;if(!cur){toast(NEED_VOICE);return}act({action:'radio',uuid:s.uuid})}
+
+/* ------------------------------------------------------------ start */
+document.querySelectorAll('input[type=range]').forEach(fill);
+applyVol();
+let first='listen';try{first=location.hash.slice(1)||localStorage.getItem('lantern.page')||'listen'}catch(e){}
+go(first);
+refresh();loadSettings();loadSetup();pollLog();openFolder('');loadQueue();
+setInterval(refresh,1000);setInterval(pollLog,1500);setInterval(()=>{if(!document.hidden)loadQueue()},4000);
+</script>
+</body>
+</html>

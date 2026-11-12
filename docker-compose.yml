@@ -1,0 +1,21 @@
+# Lantern on Unraid (or any Docker host). Run only ONE Lantern per bot token:
+# stop the Windows app before starting this.
+services:
+  lantern:
+    image: lantern:1.11.1
+    container_name: lantern
+    restart: unless-stopped
+    user: "99:100"            # Unraid nobody:users
+    ports:
+      - "8094:8080"           # web page (no sign-in: home network only)
+    labels:
+      net.unraid.docker.managed: dockerman
+      net.unraid.docker.webui: "http://[IP]:[PORT:8080]/"
+      net.unraid.docker.icon: "http://YOUR-SERVER-IP:8094/icon.png"
+    environment:
+      - TZ=Etc/UTC
+      - LANTERN_LIBRARY=/music  # local: library search; remove to turn the library off
+      # - DISCORD_TOKEN=...     # optional; otherwise the token in /config/lantern-settings.json is used
+    volumes:
+      - /mnt/user/appdata/lantern:/config
+      - /mnt/user/music:/music:ro

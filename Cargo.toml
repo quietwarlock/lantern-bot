@@ -1,0 +1,63 @@
+[package]
+name = "lantern"
+version = "1.11.1"
+edition = "2021"
+description = "Lantern, a self-hosted Discord music bot"
+repository = "https://github.com/quietwarlock/lantern-bot"
+license-file = "LICENSE"
+
+[features]
+default = ["gui"]
+gui = ["dep:eframe", "dep:egui", "dep:image", "dep:rfd"]
+# Headless Linux/Docker build (1.8.3): `cargo build --release --no-default-features --features server`.
+# 1.9: plus the web page (axum), port LANTERN_WEB_PORT.
+# 1.11: plus the web player (Ogg Opus to the browser; opus2 and rubato are already in Songbird).
+server = ["dep:axum", "dep:opus2", "dep:rubato"]
+
+[dependencies]
+tokio = { version = "1", features = ["rt-multi-thread", "macros", "sync", "time", "fs", "io-util", "process", "net", "signal"] }
+serenity = { version = "0.12", default-features = false, features = ["client", "gateway", "rustls_backend", "model", "cache", "voice"] }
+songbird = { version = "0.6", features = ["builtin-queue"] }
+rusty_ytdl = { version = "0.7", default-features = false, features = ["search", "rustls-tls"] }
+reqwest = { version = "0.12", default-features = false, features = ["json", "rustls-tls", "charset", "http2", "stream"] }
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+eframe = { version = "0.31", optional = true, default-features = false, features = ["default_fonts", "glow"] }
+egui = { version = "0.31", optional = true }
+image = { version = "0.25", optional = true, default-features = false, features = ["png"] }
+rfd = { version = "0.15", optional = true }
+symphonia = { version = "0.5", default-features = false, features = ["mkv", "ogg", "mp3", "aac", "isomp4", "pcm", "vorbis", "flac", "wav"] }
+regex = "1"
+urlencoding = "2"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+fastrand = "2"
+futures = "0.3"
+bytes = "1"
+lofty = "0.25"
+zip = { version = "2", default-features = false, features = ["deflate"] }
+axum = { version = "0.8", optional = true, default-features = false, features = ["http1", "json", "query", "tokio"] }
+opus2 = { version = "0.4", optional = true }
+rubato = { version = "0.16", optional = true }
+
+[target.'cfg(windows)'.dependencies]
+winapi = { version = "0.3", features = ["winuser", "libloaderapi", "processthreadsapi", "shellapi"] }
+
+[build-dependencies]
+embed-resource = "3"
+
+[[bin]]
+name = "lantern"
+path = "src/main.rs"
+required-features = ["gui"]
+
+[[bin]]
+name = "lantern-server"
+path = "src/server.rs"
+required-features = ["server"]
+
+[profile.release]
+strip = true
+# Smaller exe (1.6): whole-program optimisation and one codegen unit.
+lto = "fat"
+codegen-units = 1
+opt-level = "s"

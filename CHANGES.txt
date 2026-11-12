@@ -1,0 +1,484 @@
+Lantern 1.11.1
+==============
+
+Fixed
+- Web page, Discord page: the Queue card could cover the bot status and
+  Now playing cards (and the Start button) when a recently played title was
+  long, at any window width. The columns now keep their size, and below
+  1200 pixels wide the page is one column (Queue right after Now playing,
+  Recently played last).
+
+Lantern 1.11.0
+==============
+
+New
+- Web player (Docker version's web page, Listen page): plays in your
+  browser, on the speakers of the computer or phone you have the page open
+  on. It has its own queue, separate from the Discord queue; both can play
+  at the same time. Search YouTube (sc: for SoundCloud) and pick Play now,
+  Play next or Add, or paste a link (YouTube, SoundCloud, Spotify, Apple
+  Music, radio). Library songs and folders and radio stations have Play
+  and Add buttons too. Play/pause, previous, next, seek (not live radio),
+  shuffle, repeat (off, whole queue, this song), drag to reorder, remove,
+  clear played, clear, and volume per device. The phone lock screen shows
+  the song with play/pause and skip. Stations play live with a LIVE badge
+  and reconnect if the stream drops. A song that can't play says why and
+  moves on. The queue is saved on the server (lantern-webplayer.json).
+- Audio goes to the browser as one Ogg Opus stream, decoded by the same
+  code as the Discord player, so every source and radio format Lantern
+  plays in Discord (HLS, AAC, MP3, Ogg, .pls/.m3u, YouTube with the yt-dlp
+  backup) plays in the browser too. Even out volume applies.
+
+Changed
+- The web page is redesigned: Lantern's dark colors, a sidebar on a
+  computer and a bottom bar on a phone, pages for Listen, Discord, Library,
+  Radio, Settings and Activity, a mini player at the bottom of every page,
+  cover art (YouTube thumbnails, station logos, album art from your files),
+  and a whole-library search on the Library page. Every setting and tool
+  from 1.10 is still there. No outside files are loaded; everything is in
+  the program.
+
+Lantern 1.10.1
+==============
+
+Fixed
+- Radio stations that only stream HLS (an .m3u8 playlist of short pieces,
+  like iHeart's "Nu Metal Radio") played nothing: Lantern joined, said
+  Playing, and left 5 minutes later with no error. Lantern now follows the
+  playlist itself: it picks the stream, fetches each new piece, and plays
+  AAC, MP3 and MPEG-TS pieces as one live stream.
+- Station links that are .pls / .m3u playlists, or redirect to one, are
+  unwrapped to the stream inside.
+- AAC streams with MPEG-2 or CRC frame headers decode.
+- A track that couldn't be decoded, or that the player dropped before any
+  audio played, now logs why and says so in the channel (also with Quiet
+  on) instead of ending silently.
+
+Lantern 1.10.0
+==============
+
+New
+- Internet radio search (Radio Browser, radio-browser.info). On the web
+  page, the Radio panel searches by station name, tag/genre and country
+  and shows each station's logo, country, tags, codec and bitrate; Queue
+  plays it (at once if nothing is playing). In Discord, `!radio <words>`
+  (or `!station`) shows the top 4 to pick from like a YouTube search;
+  `tag:jazz` and `country:Germany` narrow it. `/radio` does the same.
+  `!radio on/off/soundcloud/youtube` still sets autoplay.
+- Stations play live: no length limit, LIVE instead of a length on the web
+  page and in the window, and a dropped stream reconnects (waits 2, 5, 10,
+  20, 30 s, starting over after a minute of good play). Skip and Stop work
+  as usual. Autoplay doesn't pick related songs after a radio station.
+- Favorites: the Favorite button on Now playing saves a station like a song.
+- Browse music on the web page: click through the music library folders
+  like a file explorer. Breadcrumb path, folders first then songs, each
+  song's title, artist, album and length from the library index, and a
+  filter box for the folder you're in. Queue one song, a folder, or the
+  folder you're in (and the folders inside it, up to 1000 songs, like the
+  window's Add folder). Songs go to the server chosen in the server picker.
+  Each folder loads only when you open it.
+- Browsing never leaves the library folders: ".." is refused, and symlinks
+  that lead outside are hidden and refused, also when a whole folder is
+  queued.
+
+Lantern 1.9.0
+=============
+
+New
+- Web page for the Docker / server version. On Unraid, click Lantern's icon
+  on the Docker tab and choose WebUI. No sign-in; keep the port on your home
+  network (or Tailscale).
+  - Status: online/offline, Start and Stop bot, the server picker, now
+    playing with a progress bar, the queue, recently played, and an update
+    notice when a newer Lantern is out.
+  - Player: pause/resume, skip, leave, loop (off/track/queue), autoplay and
+    "From SoundCloud", per-server volume, shuffle, clear, move up/down,
+    remove, and click a recently played song to queue it again.
+  - Add songs by link or search (local: words search the music library),
+    add a file or folder from the music library by path, import a .m3u,
+    .m3u8, .pls or .xspf playlist, and export the queue.
+  - Every setting the Windows window has, saved to lantern-settings.json with
+    the same checks and applied the same way. The bot token is never sent to
+    the browser: the page only says it is set, and a new one can be pasted in.
+    Music library folders (add, remove, rescan), the setup steps with the
+    invite link, and Copy diagnostics are there too.
+  - The activity log, live.
+- LANTERN_WEB_PORT sets the port inside the container (default 8080; "off"
+  turns the page off). The image carries Unraid labels so the WebUI button
+  and icon work, and the README has an Unraid template.
+- With the page on, a missing or rejected token no longer stops the
+  container: paste a new token on the page and press Start. Stop bot on the
+  page keeps it stopped until Start (it no longer signs in again by itself).
+- The server build now honours "Start the bot when Lantern starts".
+- On Linux, lantern-settings.json (it holds the token) is saved readable by
+  its owner only, and rewriting a file keeps its permissions.
+
+Unchanged
+- The Windows app, playback, and autoplay.
+
+Lantern 1.8.3
+=============
+
+Fixes
+- A dropped voice connection is noticed and fixed. Before, if Discord's voice
+  link died, Lantern kept "playing" (and autoplay kept picking songs) into
+  nothing until someone stopped it. Now, when the voice link drops, Lantern
+  pauses the song, rejoins the same voice channel, and carries on from where
+  it paused. The queue, autoplay, and loop are kept. Autoplay itself is
+  unchanged.
+- Each new song also checks the voice link first, and a check every 15 seconds
+  catches a link that died without saying so (Discord no longer lists Lantern
+  in the channel).
+- If rejoining fails it tries again after 5 s, 10 s, 30 s, 1 min, 2 min, then
+  every 5 minutes, instead of spinning. Stop or leave ends the retries.
+- Log lines: "Voice connection dropped (<why>); rejoining <channel>",
+  "Rejoined <channel>; carrying on with <song>", and
+  "Couldn't rejoin <channel> (try N: <why>); trying again in Ns".
+- Stop now logs who did it: "Stopped by <user> via !stop" (or !leave, !dc,
+  /stop, or the Stop button).
+
+New
+- Docker / Linux server build (lantern-server): no window or tray, settings
+  and data from a /config folder, Discord token from the settings file or the
+  DISCORD_TOKEN variable, music library from a read-only mount
+  (LANTERN_LIBRARY). Dockerfile, docker-compose.yml, and an Unraid section in
+  the README. The Windows app is unchanged.
+
+Lantern 1.8.2
+=============
+
+New
+- Quiet (Settings), off by default. While it's on, Lantern stops routine posts
+  in the music channel: "Queued …" after play, search, local, load, and replay;
+  the search picker's "Queued" line; a clean playlist import ("Queued N tracks");
+  "Shuffled your favorites" after fav play; Now playing cards; skip/shuffle
+  button shout-outs ("Skipped … (by @user)"); and the restore offer posted
+  after a restart. The offer is still written to the activity log, and
+  `restore` still works. Adding files or importing a playlist from the window
+  no longer posts "Queued" in Discord either. The window, tray, and log are
+  unchanged.
+- Errors still show (couldn't join voice, nothing found, files a playlist
+  skipped, Go+ previews, save failed, and the rest). So do answers to commands
+  you ran: help, queue, np, lyrics, history, fav list, and `restore` itself.
+  Songs queued before anyone is in voice still get the "I'll start when you
+  join" reply.
+- Listening status is not Quiet. "Show the song as the bot status" still sets
+  "Listening to …" when song status is on. Quiet does not turn that off.
+- Older lantern-settings.json files load with Quiet off.
+
+Lantern 1.8.1
+=============
+
+Fixes
+- Playback no longer stalls after a song ends. If a stream finishes or dies
+  without the player noticing, Lantern now moves to the next song: when the
+  position reaches the song's length and stops for 5 seconds, runs past it, or
+  stops for 30 seconds mid-song after a real start. Pause never triggers this.
+- Skip, Stop and leave now act on the very next check (within a quarter
+  second), even if the stream never reports that it finished. Before, a stuck
+  song kept the queue from moving and new songs were queued but never played.
+- A player check that hangs is given up on after 3 seconds instead of
+  blocking playback forever.
+- The log notes "<song> stopped at m:ss of m:ss; moving on" when this happens.
+
+Lantern 1.8.0
+=============
+
+New
+- SoundCloud search: `play sc: artist song` (also `soundcloud:` and the old
+  `scsearch:`), in `!play` and `/play`. Go+ songs, which only play a 30-second
+  preview, are skipped.
+- SoundCloud autoplay: `autoplay soundcloud` (or `/autoplay state:soundcloud`,
+  or "From SoundCloud" next to Autoplay in the window). When the queue runs
+  out, Lantern queues a related SoundCloud song, or searches SoundCloud for the
+  last song's title. Recently played songs are skipped. `autoplay youtube`
+  switches back. After a SoundCloud song, autoplay follows SoundCloud.
+- `queue` shows "Autoplay: on (SoundCloud)" when that's the source.
+
+Fixes
+- SoundCloud links play again. SoundCloud now sends most songs only as HLS
+  (AAC pieces), which Lantern used to skip. It now downloads the pieces, joins
+  them, and plays the whole song with seek working. If SoundCloud's own lookup
+  fails and the YouTube backup is on, yt-dlp finds the audio instead.
+
+Lantern 1.7.1
+=============
+
+Fixes
+- A file streamed without a length (chunked) that dropped mid-song now picks
+  up where it stopped when the server allows it, instead of failing.
+- One bad value in lantern-settings.json (say a hand-edited volume) no longer
+  resets every setting and the token. Good values are kept; a .bak is made.
+- If lantern-data.json can't be read, Lantern no longer overwrites it (and your
+  playlists) on the next change. A .bak is made and changes stay in memory.
+- Library: a share or subfolder that fails during a scan keeps its tracks from
+  the last scan, and a folder added while a scan runs is scanned right after.
+- The tray icon comes back after Windows Explorer restarts.
+- Songs queued by someone outside voice while Lantern is already playing go on
+  that queue instead of waiting.
+- The lookup cache no longer mixes up links that differ only in letter case.
+
+Lantern 1.7.0
+=============
+
+New
+- First-run setup wizard. Opens by itself when there's no token: create the
+  Discord app, paste the token (checked without contacting Discord), copy the
+  invite link with the right permissions, optionally set your owner ID, then
+  Save and start. Reopen it any time with Setup wizard under Settings.
+- Copy diagnostics (Settings). Copies a report for bug reports with the token,
+  Discord IDs, file paths and network addresses removed.
+- Translations. Discord replies are in lang/en.json. Copy it next to the exe as
+  lantern-lang.json and translate the values; missing keys stay English.
+- Lookup cache. Searches and links resolved in the last 6 hours (up to 300) are
+  reused, so repeat songs start faster. Memory only.
+- Songs per person and Longest song (Settings). Limits for people who aren't
+  the owner or a DJ. Both 0 (off) by default.
+- Queue before Lantern joins voice. `!play`, `/play` and `/local` work when
+  you're not in voice and Lantern isn't either; it joins you and starts as soon
+  as you join a voice channel. `stop` clears waiting songs.
+- Update check. At startup Lantern asks GitHub whether a newer release is out
+  and shows a link in the window. Nothing is downloaded. Can be turned off.
+- Restore after restart. The current song and queue are kept in
+  lantern-data.json. After a restart Lantern posts an offer in the last channel,
+  and `restore` (or `/restore`) puts them back.
+- Live lyrics. `lyrics live` shows timed lyrics from lrclib that follow the song
+  in one message (updated every few seconds), falling back to plain lyrics.
+
+Lantern 1.6.1
+=============
+
+Bug fixes (no new features)
+- Skip and Stop now work at once while a song is still loading. Before, they
+  waited for a slow YouTube or yt-dlp lookup to finish (up to 2 minutes).
+- Old Shoutcast radio servers that answer "ICY 200 OK" instead of HTTP now
+  play. Before, the link was refused as not a stream.
+- Slash commands with two options (/move, /fav, /export) read them in the
+  right order even when you fill them in the other way round. Before,
+  `/move to:1 from:5` moved song 1 to place 5.
+- Deleting the DJ role in Discord no longer locks everyone but the owner out
+  of the controls: Lantern forgets the role and logs it.
+- `sleep` with an absurdly large number is refused instead of overflowing.
+
+Lantern 1.6.0
+=============
+
+New (in the order Jev ranked them)
+- Playlist import and export. In the window: Import playlist queues a .m3u,
+  .m3u8, .pls (Winamp, VLC) or .xspf (VLC) file. Files play from disk or a
+  network share, links play like `play <link>`, and files that have moved or
+  been deleted are skipped and counted. Export queue saves what's playing and
+  the queue in the same four formats, so it opens in Winamp or VLC.
+  In Discord: `import` with a playlist file attached, and `export [m3u|m3u8|pls|xspf]
+  [saved playlist]` sends a file back. Discord imports play links, and paths
+  only when that file is in the music library; Discord exports never include
+  paths.
+- Discord status: "Listening to <song>" now shows "(paused)", comes back after
+  a reconnect, clears at once when the setting is turned off, and is only sent
+  when it changes.
+- Smaller exe: fat LTO, one codegen unit, optimised for size.
+- Vote-skip: with 3 or more people listening, `skip` from someone who isn't the
+  owner or a DJ is a vote; half of the listeners (rounded up) skips the song.
+  The owner and DJs still skip at once.
+- Recently played: a panel in the window lists the last 20 songs; click one to
+  queue it again. `replay N` (or `/replay`) does the same from `history`.
+- Volume leveling ("Even out volume between songs", on by default): uses
+  ReplayGain tags in music files and YouTube's loudness figure so songs play
+  at a similar level. Loud YouTube videos are turned down; nothing from
+  YouTube is boosted.
+- Sleep timer: `sleep 30m`, `sleep 1h30m`, `sleep end` (after this song),
+  `sleep off`, `sleep` to see it. Stops and leaves the voice channel.
+- Favorites: a ❤️ button on the Now playing message (anyone can use it), `fav`
+  to add what's playing, `fav list`, `fav play` (your favorites shuffled into
+  the queue), `fav remove 2`.
+
+Lantern 1.5.0
+=============
+
+New
+- Music library. Add folders in the window (Add library folder, Add server music
+  share, or type any path or network share). Lantern reads
+  title, artist, album, and length from mp3, flac, m4a, ogg, and wav tags and keeps
+  the index in lantern-library.json. Rescan on open, on add, and with Rescan.
+- `/local` (with autocomplete), `local <words>`, and `play local:<words>` play
+  the best library match. Anyone who can use play can use them. Discord never
+  sends a path, only search words or the short #key autocomplete picked. Only
+  the window can add or remove folders.
+- A library folder that can't be reached (share off, no saved login) keeps the
+  tracks from its last good scan and shows why in the window and the log.
+- `lyrics` / `/lyrics`: words for what's playing or for a named song, from
+  lrclib.net (free, no key). The closest length wins; long lyrics are trimmed.
+- Start Lantern when I sign in to Windows: a checkbox that adds or removes the
+  per-user Run key entry.
+- Install to a permanent folder: copies Lantern, settings, data, the library
+  index, yt-dlp, and deno to %LOCALAPPDATA%\Lantern, adds a Start menu shortcut,
+  moves Start with Windows there, and opens it. The old copy keeps working.
+- yt-dlp gets a JavaScript runtime: Lantern downloads the official deno.exe next
+  to itself in the background after yt-dlp is first used and passes it with
+  --js-runtimes. Without it yt-dlp runs as before.
+
+Fixed
+- A YouTube stream that stops within 10 seconds of a song longer than 30 seconds
+  is now a failure, not a finished song. Lantern logs why, drops its cached
+  YouTube session, and retries that song once by the next route (Android VR,
+  iOS, then yt-dlp). Before, such songs ended silently and the queue or
+  autoplay moved on, so one broken session skipped song after song until a
+  restart.
+- Autoplay stops after 3 songs in a row fail, with a message in Discord, instead
+  of cycling through recommendations that also fail.
+- lantern-log.txt lines carry the date (the window still shows the time only).
+
+Lantern 1.4.0
+=============
+
+New
+- YouTube playlists queue up to the playlist limit, including past the first page.
+  The playlist page is read first. The watch panel (about 200 songs, no further
+  page) is the fallback, then yt-dlp, same as before.
+- A watch link that also names a normal playlist starts at that song, even when
+  the song is past the first 200. A `watch?v=…&list=RD…` mix link still plays
+  just that video.
+- `youtube.com/browse/VL…` and `music.youtube.com/browse/VL…` queue that playlist.
+  Album links (`OLAK…`) use the same path.
+- Published as GitHub release v1.4.0 (`Lantern.exe` + this file). Leave
+  `lantern-settings.json`, `lantern-data.json`, and `yt-dlp.exe` next to the exe.
+
+Lantern 1.3.0
+=============
+
+New
+- The queue panel can add music from this PC. **Add files** picks audio files.
+  **Add folder** walks that folder and the folders inside it.
+- Formats: mp3, m4a, ogg, opus, flac, wav, aac, webm. Other files are skipped.
+  Hidden names (starting with `.`) inside a folder are skipped unless that file
+  was picked itself. A folder shortcut that loops is skipped. Depth stops at 32.
+- Order is case-insensitive, and track 2 comes before track 10. One add stops
+  at 1000 tracks and the log says so.
+- The track name is the file name without the folder or the extension.
+  `D:\Music\Whatever\Song Title.mp3` is "Song Title" in the window and in Discord.
+- Discord queue, now playing, history, the queued message, and errors show that
+  name only. Failures do not include the reason, because it can contain the path.
+  The activity log strips the path out of the reason too.
+- The path is kept only so the file can be opened. `save` and history can write
+  it into `lantern-data.json` next to the exe. That file is not sent to Discord.
+- If Lantern is already in a voice channel, the tracks play there. It does not
+  move. If it isn't, and Owner ID is set, it joins the voice channel that person
+  is in. Otherwise nothing is queued.
+- This does not add a saved-playlist editor. `save` / `load` are unchanged and
+  will include these tracks if they are on the queue.
+- Published as GitHub release v1.3.0 (`Lantern.exe` + this file). Settings and
+  `lantern-data.json` next to the exe are not in the release.
+
+Lantern 1.2.1
+=============
+
+A hardening pass on 1.2.0. No new features.
+
+Fixed
+- Saving `lantern-data.json` or settings no longer fails silently. The activity log records it, the window shows a one-time warning, and Discord commands that save (playlists, volume, DJ, autoplay) say when the file could not be written.
+- Direct HTTP links to private or local addresses (`localhost`, `127.0.0.1`, `10.x`, `192.168.x`, link-local, CGNAT `100.64.x`, and IPv6 equivalents) are refused unless the requester is the **owner** (Owner ID in Settings). Redirects are checked hop by hop.
+- Loading an empty playlist or resolve result no longer joins voice first; the bot stays out of the channel.
+- Old `itunes.apple.com` links (including `id…` in the path) work like `music.apple.com` links.
+- Unknown-length streams that are not live radio no longer reconnect from byte 0 after a drop (which replayed the song). Only radio items reconnect without a Range header.
+
+Lantern 1.2.0
+=============
+
+New
+- YouTube backup: if YouTube's own clients (Vision, Android VR, iOS) stop working, Lantern
+  falls back to yt-dlp. Songs, searches, and playlist/mix imports all have the fallback.
+  Settings > "YouTube backup (yt-dlp)", on by default.
+- yt-dlp.exe is taken from next to Lantern.exe, then from PATH. If neither has it, Lantern
+  downloads the official release next to the exe the first time it is needed. The copy next to
+  the exe is updated with yt-dlp -U at most once a day (or downloaded again if the update fails
+  and it is over 7 days old). It runs with no console window and a time limit.
+- The activity log says which route played each YouTube song ("via Android VR", "via yt-dlp"),
+  and why earlier routes were skipped. Nothing extra is sent to Discord.
+
+Fixed
+- A YouTube audio link that YouTube refuses (403/410 or similar) no longer fails the song. Lantern
+  tries the next client, then yt-dlp. This also covers a link refused while the song is starting,
+  before any audio has played.
+
+Notes
+- Old settings files load unchanged; the new setting is on.
+- New files next to the exe only if used: yt-dlp.exe and lantern-ytdlp-check.txt.
+- No ffmpeg needed. yt-dlp is asked for m4a audio first, then WebM/Opus.
+- Time allowed to load a song is now 120 seconds (was 45), so a slow client can't use up yt-dlp's turn.
+
+Lantern 1.1.1
+=============
+
+A hardening pass on 1.1. No new features.
+
+Fixed
+- Now playing buttons answer Discord right away, so they no longer show "interaction failed"
+  when stopping or redrawing the card is slow. A button on an old card (an earlier song, or from
+  before a restart) removes its buttons instead of acting on the song that's playing now.
+- A jump that arrived before a song's download had started could play audio from the wrong place
+  (the start of the file filed under the new position). It now opens the right part.
+- Seeking past the end of a stream (and a few odd MP4 files that do so while opening) now reads as
+  the end of the file instead of asking the server for bytes that don't exist and failing.
+- Idle auto-leave checks again at the moment it leaves, so a song queued just then isn't thrown away.
+- Pressing Stop while autoplay was looking for a song no longer lets that song start anyway.
+- Searching again before answering the first picker no longer cancels the second search.
+- `dj` refuses a role ID that isn't a role in the server. A made-up ID could lock everyone out.
+- Loading a saved playlist that is empty (a hand-edited file) says so instead of the command silently doing nothing.
+- Settings and saved data: each save uses its own temporary file and is flushed to disk, so two saves
+  can't overwrite each other and a power cut can't leave an empty file. A file with a Notepad
+  byte-order mark loads. A file that can't be read is copied to .bak before anything overwrites it.
+- The activity log file no longer loses lines when two parts of Lantern write at the same moment.
+- Slash commands are sent to Discord once per run, not on every reconnect. A slash command Lantern no
+  longer has gets a reply instead of "thinking" forever.
+
+Tests
+- The streaming source is tested against a small web server on localhost, with and without range
+  support, including dropped connections, seeking past the end, and YouTube-style range pieces.
+  The tests no longer need ffmpeg. Tests that need the internet are marked ignored.
+
+Notes
+- Setup: README has a Discord setup section with the intent, permissions, and an invite link template.
+
+Lantern 1.1.0
+=============
+
+New
+- Queue tools: remove, move, clear, shuffle, and loop (off / track / queue).
+- Seek, forward, and rewind on YouTube, SoundCloud, and files. Live radio politely says no.
+- The "Now playing" message has buttons: pause/resume, skip, stop, loop, shuffle.
+- YouTube playlist and mix links (list=) import up to the playlist limit (now 1-100).
+- Autoplay: related songs keep playing when the queue ends, skipping recent repeats.
+  Toggle with !autoplay or the window checkbox. Off by default, saved per server.
+- Saved playlists (save / load / playlists / delete) and history of the last 50 songs.
+- DJ role per server (!dj @role, set by the owner or a server admin). Volume is remembered per server.
+- Lantern leaves after being idle for N minutes. Settings > "Leave when idle", default 5, 0 = never.
+- Window: server picker, progress bar, queue list with up/down/remove, Shuffle, Clear,
+  Loop button, Autoplay checkbox, and a per-server volume slider that applies right away.
+- Every command is also a slash command. They register automatically when the bot starts.
+- Activity log saved to lantern-log.txt next to the exe, rotated at about 1 MB. Times are local.
+- Spotify and Apple Music links pick the YouTube result whose length matches.
+
+Fixed
+- Queue no longer freezes after stop or auto-leave while a song is loading.
+- Start works again after a failed connect, and the log says why it failed
+  (bad token, Message Content intent off, ...).
+- !volume is no longer reset by the next song.
+- Pause, resume, and skip act on the right server. The window's Pause button shows the real state.
+- People who aren't the owner/DJ no longer get "owner only" for messages that aren't Lantern commands.
+- All web requests time out instead of hanging. YouTube falls back to other clients if one is refused.
+- SoundCloud links work again, and are looked up when the song starts so links don't expire.
+  HLS-only tracks are skipped with a message.
+- Stop bot (and closing the window) leaves every voice channel.
+- Being kicked from or moved between voice channels is handled.
+- Songs that fail to play are reported in the text channel.
+- Skip names the song that was skipped.
+- Search results now show the right length (it was off by a factor of 1000).
+- A damaged settings file is kept as lantern-settings.json.bak instead of being lost.
+
+Notes
+- Old 1.0 settings files load unchanged.
+- queue, np, help, history, and playlists can now be used by anyone. Everything that changes playback
+  still needs the owner or the DJ role. If neither is set, everyone can do everything, as in 1.0.
+- Discord: only the Message Content intent is needed. The bot needs Send Messages, Embed Links,
+  Add Reactions, Read Message History, Connect, and Speak. Manage Messages is optional; it lets Lantern clear picker reactions.
+- If the slash commands don't show up, press Ctrl+R in Discord.

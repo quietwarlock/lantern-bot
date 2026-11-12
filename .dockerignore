@@ -1,0 +1,7 @@
+target
+.git
+*.exe
+docs/*.pdf
+lantern-settings.json
+lantern-data.json
+lantern-log*.txt
