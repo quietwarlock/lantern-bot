@@ -232,6 +232,8 @@ All settings are in the window and saved to `lantern-settings.json`.
 | Default volume | Starting volume (0-200, default 80) for servers that haven't set their own. |
 | Playlist limit | How many songs a YouTube playlist or mix imports (1-100, default 25). |
 | Leave when idle | Minutes of silence before Lantern leaves voice. Default 5, 0 = never. |
+| Songs per person | How many songs one person (not the owner or a DJ) can have waiting in the queue. 0 = no limit (the default). |
+| Longest song | Songs longer than this (in minutes) are refused for people who aren't the owner or a DJ. 0 = any length (the default). |
 | Stay in the channel after the queue ends | Stay in voice when the queue ends (the idle timer still applies). On by default. |
 | Leave when everyone else leaves | Leave when nobody else is left in the voice channel. Off by default. |
 | Show the song as the bot status | Show "Listening to" the current song as the bot's Discord status, with "(paused)" while paused. Turning it off clears it at once. On by default. Quiet does not change this. |
@@ -241,6 +243,7 @@ All settings are in the window and saved to `lantern-settings.json`.
 | Minimize to the system tray | Hide to the tray icon when minimized. On by default. |
 | Ask which YouTube result to play | Show the 4-result picker for text searches instead of playing the first match. On by default. |
 | YouTube backup (yt-dlp) | Use yt-dlp when YouTube's normal routes fail. Lantern downloads it next to the exe the first time it's needed. On by default (also for older settings files). |
+| Check for updates at startup | Shows a link in the window if a newer release is out. Nothing is downloaded. On by default. |
 
 Per-server things (volume, DJ role, autoplay, playlists and history) are set from Discord and saved to `lantern-data.json`.
 
@@ -265,8 +268,8 @@ Per-server things (volume, DJ role, autoplay, playlists and history) are set fro
 | `!` commands get no answer | Check Message Content Intent, the prefix in Settings, and that the bot can see and write in that channel. |
 | Slash commands don't appear | The invite needs the `applications.commands` scope. Press Ctrl+R in Discord, or re-invite with the link above. |
 | "Not allowed" | You're not the owner or in the DJ role. If the DJ role was deleted, a server admin can run `dj off` or set a new role. |
-| A YouTube song fails | Check the activity log: it lists each route tried and why it failed. Make sure *YouTube backup (yt-dlp)* is on. Try again or use another link. If it keeps happening, tell the Lantern bot so the YouTube clients can be updated. |
-| The log says YouTube wants you to sign in ("Sign in to confirm you're not a bot") | YouTube is blocking yt-dlp from your network for now. Lantern doesn't log in to YouTube, so the song fails as before. Wait a while and try again, restart your router to get a new IP, or avoid VPNs. If it persists, tell the Lantern bot. |
+| A YouTube song fails | Check the activity log: it lists each route tried and why it failed. Make sure *YouTube backup (yt-dlp)* is on. Try again or use another link. If it keeps happening, open a GitHub issue so the YouTube clients can be updated. |
+| The log says YouTube wants you to sign in ("Sign in to confirm you're not a bot") | YouTube is blocking yt-dlp from your network for now. Lantern doesn't log in to YouTube, so the song fails as before. Wait a while and try again, restart your router to get a new IP, or avoid VPNs. If it persists, open a GitHub issue. |
 | yt-dlp didn't download | The first download happens only when a song needs the backup. Check the log for the download message. If your network blocks GitHub, put `yt-dlp.exe` next to `Lantern.exe` yourself. |
 | A library folder shows red | The folder or share couldn't be opened. For a network share, check the server is on, open the share once in File Explorer with **Remember my credentials**, then **Rescan**. |
 | `/local` finds nothing | The library is empty or still scanning. Check the track count in the window. Every word you type must be in the title, artist, album or file name. |
@@ -279,7 +282,7 @@ Per-server things (volume, DJ role, autoplay, playlists and history) are set fro
 | "Only the owner can play LAN links" | The link points at a local or private address. Only the Owner ID set in the window can play it. |
 | "There's nothing in that to play" | The playlist or link had no playable songs. Lantern no longer joins voice for it. |
 | Settings or playlists look reset | Look for the `.bak` file next to the exe. It's the copy of the file that couldn't be read. |
-| Lantern closed by itself | Look for `lantern-crash.txt` next to the exe and send it to the Lantern bot. Never send `lantern-settings.json`, since it holds the token. |
+| Lantern closed by itself | Look for `lantern-crash.txt` next to the exe and attach it to a GitHub issue. Never share `lantern-settings.json`, since it holds the token. |
 | The log says "Voice connection dropped … rejoining" | Discord's voice link died (network blip or a Discord voice server problem). Lantern pauses the song, rejoins the same channel, and carries on. If it can't, it tries again after 5 s, 10 s, 30 s, 1 min, 2 min, then every 5 minutes. `stop` ends the retries. |
 | Who stopped the music? | The log says "Stopped by <name> via !stop" (or /stop, !leave, !dc, or the Stop button). |
 | Windows warns about the exe | It isn't signed. Choose **More info**, then **Run anyway**. |

@@ -2,8 +2,8 @@
 
 ## Your Discord bot token
 
-- Lantern never ships with a token. You paste yours into the window; it is stored only in `lantern-settings.json` next to `Lantern.exe`.
-- Never commit, upload, screenshot or share `lantern-settings.json`. `.gitignore` excludes it.
+- Lantern never ships with a token. It is pasted into the window (or the Docker web page) and stored only in `lantern-settings.json`, next to `Lantern.exe` or in the Docker config folder.
+- Do not upload, screenshot or share `lantern-settings.json`. The file is listed in `.gitignore` so it is not included with the code.
 - If your token leaks, open the [Discord Developer Portal](https://discord.com/developers/applications), select your app, go to **Bot**, and press **Reset Token**. The old token stops working at once.
 
 ## Files that may contain private data

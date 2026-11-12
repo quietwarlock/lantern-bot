@@ -2,7 +2,7 @@
 
 A self-hosted Discord music bot for Windows. It runs on your own PC with its own window and a system-tray icon, plays YouTube, SoundCloud, Spotify/Apple Music links (matched on YouTube), radio, direct links and your own music folders, and needs no YouTube login.
 
-> **Your bot token is yours.** It is never in this source or in any release. You paste it into Lantern's window and it is saved only in `lantern-settings.json` next to the exe. Never commit or share that file. See [SECURITY.md](SECURITY.md).
+> The Discord bot token is saved only in `lantern-settings.json` (next to the exe, or in the Docker config folder). Keep that file private. See [SECURITY.md](SECURITY.md).
 
 ## Quick start
 
@@ -12,11 +12,11 @@ A self-hosted Discord music bot for Windows. It runs on your own PC with its own
 4. Run `Lantern.exe`. The setup wizard opens on first launch; or paste the bot token into **Settings**, optionally your own Discord user ID as **Owner ID**, and press **Start bot**.
 5. Join a voice channel in your server and type `!play <song or link>` or `/play`.
 
-The full user guide is in [docs/GUIDE.md](docs/GUIDE.md). New in 1.7: setup wizard, queue before Lantern joins voice, `restore` after a restart, live lyrics, per-person limits, update check, Copy diagnostics, and translations (`lang/en.json` → `lantern-lang.json`).
+The full user guide is in [docs/GUIDE.md](docs/GUIDE.md). Features include a setup wizard, queueing before Lantern joins voice, `restore` after a restart, live lyrics, per-person limits, an update check, Copy diagnostics, and translations (`lang/en.json` → `lantern-lang.json`).
 
 ## Discord setup
 
-1. [Discord Developer Portal](https://discord.com/developers/applications) → New Application → **Bot**. Press **Reset Token**, copy it, and paste it into Lantern's Settings. Never share the token or commit `lantern-settings.json`.
+1. [Discord Developer Portal](https://discord.com/developers/applications) → New Application → **Bot**. Press **Reset Token**, copy it, and paste it into Lantern's Settings. Never share the token or `lantern-settings.json`.
 2. On the same Bot page, turn on the **Message Content Intent**. It's the only privileged intent needed. Presence and Server Members stay off.
 3. Invite the bot with the scopes **`bot`** and **`applications.commands`** (the second one is what makes `/play` and friends appear). Replace `YOUR_APP_ID` with the Application ID from General Information:
 
@@ -177,7 +177,7 @@ Non-controllers who try a controller command get a short "not allowed" reply.
 - **Now playing** has a progress bar, Pause/Resume, Skip, Leave, a Loop button, an Autoplay checkbox, and a volume slider for that server.
 - **Queue** has ⬆ / ⬇ / ✕ on each song, plus Shuffle and Clear. **Add files** and **Add folder** are documented under [Files on this PC](#files-on-this-pc).
 - **Activity log** shows local times. It is also written to `lantern-log.txt`, which rotates to `lantern-log.old.txt` at about 1 MB.
-- **Settings:** token, owner ID, prefix, default volume, playlist limit (1–100), "leave when idle" in minutes (default 5, 0 = never), stay in channel, leave when alone, song as status, Quiet (fewer channel posts; does not turn off Listening status), start on open, minimize to tray, choose from search results, and YouTube backup (yt-dlp).
+- **Settings:** token, owner ID, prefix, default volume, playlist limit (1–100), "leave when idle" in minutes (default 5, 0 = never), songs per person, longest song, stay in channel, leave when alone, song as status, Quiet (fewer channel posts; does not turn off Listening status), even out volume, start on open, minimize to tray, choose from search results, YouTube backup (yt-dlp), and the update check.
 - **Music library** and **Startup**: see [Music library](#music-library) and [Startup and install folder](#startup-and-install-folder).
 - Minimizing hides the window to the tray. Closing the window stops the bot and leaves voice.
 
@@ -231,7 +231,7 @@ To run the tests without the window: `cargo test --lib --no-default-features`. T
 
 ## Docker (Unraid or any Linux server)
 
-`lantern-server` is Lantern without the window or tray. It reads the same `lantern-settings.json` and `lantern-data.json`, starts the bot (unless *Start the bot when Lantern starts* is off), writes `lantern-log.txt` (also shown by `docker logs`), and serves a web page (1.9) that does what the window does.
+`lantern-server` is Lantern without the window or tray. It reads the same `lantern-settings.json` and `lantern-data.json`, starts the bot (unless *Start the bot when Lantern starts* is off), writes `lantern-log.txt` (also shown by `docker logs`), and serves a web page that does what the window does, plus a web player for listening in the browser.
 
 **Run only one Lantern per bot token.** Stop and close the Windows app (and turn off *Start with Windows*) before starting the container, or the two fight over the same bot.
 
@@ -278,17 +278,17 @@ Pick any free host port instead of `8094`.
 - **Back to Windows:** `docker stop lantern && docker update --restart no lantern`, then open `Lantern.exe` and press Start.
 - Window-only things (tray, Start with Windows, the permanent install folder, file pickers) don't exist in the server build. *Add files* on the page takes a path inside a music library folder instead.
 
-### Web page (1.9, redesigned and with its own player in 1.11)
+### Web page
 
 Open `http://<server>:<host port>/`. On Unraid: Docker tab → click Lantern's icon → **WebUI**. There is **no sign-in**, so keep the port on your home network or Tailscale; don't forward it from the internet. Pages: **Listen**, **Discord**, **Library**, **Radio**, **Settings** and **Activity** (a sidebar on a computer, a bar at the bottom on a phone), with the web player's mini player always at the bottom.
 
-- **Listen (1.11, web player):** plays in the browser, on that computer's or phone's speakers, from a queue of its own that never touches the Discord queue (both can play at once). Search YouTube (`sc:` for SoundCloud) and pick Play now / Play next / Add, or paste any link Lantern takes; add library songs and folders from **Library** and stations from **Radio**. Play/pause, previous, next, seek (not live radio), shuffle what's up next, repeat off / whole queue / this song, drag or move songs, remove, clear played, clear. Volume is per device. The queue is saved in `lantern-webplayer.json`. Audio is sent as one Ogg Opus stream (`/api/web/stream/<id>`), decoded with the same code as the Discord player, so every source and radio format Discord plays works here too. Phone lock-screen controls work through the browser's media session.
+- **Listen (web player):** plays in the browser, on that computer's or phone's speakers, from a queue of its own that never touches the Discord queue (both can play at once). Search YouTube (`sc:` for SoundCloud) and pick Play now / Play next / Add, or paste any link Lantern takes; add library songs and folders from **Library** and stations from **Radio**. Play/pause, previous, next, seek (not live radio), shuffle what's up next, repeat off / whole queue / this song, drag or move songs, remove, clear played, clear. Volume is per device. The queue is saved in `lantern-webplayer.json`. Audio is sent as one Ogg Opus stream (`/api/web/stream/<id>`), decoded with the same code as the Discord player, so every source and radio format Discord plays works here too. Phone lock-screen controls work through the browser's media session.
 
 - **Status and player:** Start/Stop bot, server picker, now playing with progress, pause/resume, skip, leave, loop, autoplay and *From SoundCloud*, per-server volume, recently played (click to queue again), and the update notice.
 - **Queue:** shuffle, clear, move up/down, remove; add by link or search (`local:` words search the library), add a file or folder from the library by path, import a playlist file, export the queue.
 - **Settings:** every setting the window has, checked and saved to `lantern-settings.json` the same way and applied the same way (the next command; a new token after Stop bot, then Start). The token is write-only: the page shows only whether one is set. With `DISCORD_TOKEN` set, the variable stays in use and is never written to the file. `LANTERN_LIBRARY` resets the library folders at every container start.
-- **Browse music (1.10):** click through the library folders (breadcrumbs, folders then songs with title/artist/length from the library index, a filter box) and queue a song, a folder, or the folder you're in into the server chosen in the picker. Only the library folders can be browsed; `..` and symlinks that lead outside are refused.
-- **Radio (1.10):** search internet radio stations (Radio Browser) by name, tag/genre and country; each shows its logo, country, tags, codec and bitrate; *Queue* plays it live in the chosen server. The server re-looks the station up by its ID, so the page never sends a stream address.
+- **Browse music:** click through the library folders (breadcrumbs, folders then songs with title/artist/length from the library index, a filter box) and queue a song, a folder, or the folder you're in into the server chosen in the picker. Only the library folders can be browsed; `..` and symlinks that lead outside are refused.
+- **Radio:** search internet radio stations (Radio Browser) by name, tag/genre and country; each shows its logo, country, tags, codec and bitrate; *Queue* plays it live in the chosen server. The server re-looks the station up by its ID, so the page never sends a stream address.
 - **Library, setup, diagnostics, log:** add/remove/rescan library folders, the setup steps with your invite link, the redacted diagnostics report, and the live activity log.
 - Every change is a JSON `POST`, so another web site can't press the buttons from your browser.
 
