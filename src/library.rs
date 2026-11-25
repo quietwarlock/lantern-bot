@@ -29,6 +29,9 @@ pub struct Track {
     pub album: String,
     #[serde(default)]
     pub length: Option<u64>,
+    /// The genre tag (1.12), for `genre`. Empty when the file has none.
+    #[serde(default, skip_serializing_if = "String::is_empty")]
+    pub genre: String,
 }
 
 impl Track {
@@ -282,6 +285,7 @@ pub fn read_track(path: &Path, folder: &str) -> Track {
         artist: String::new(),
         album: String::new(),
         length: None,
+        genre: String::new(),
     };
     if let Ok(file) = lofty::read_from_path(path) {
         let secs = file.properties().duration().as_secs();
@@ -295,6 +299,7 @@ pub fn read_track(path: &Path, folder: &str) -> Track {
             }
             track.artist = clean(tag.artist()).unwrap_or_default();
             track.album = clean(tag.album()).unwrap_or_default();
+            track.genre = clean(tag.genre()).map(|g| crate::genre::id3v1_name(&g)).unwrap_or_default();
         }
     }
     track
@@ -346,6 +351,7 @@ mod tests {
             artist: String::new(),
             album: String::new(),
             length: None,
+            genre: String::new(),
         };
         let previous = Index { tracks: vec![old.clone()], problems: HashMap::new() };
         std::fs::set_permissions(&sub, std::fs::Permissions::from_mode(0o000)).unwrap();
@@ -369,6 +375,7 @@ mod tests {
             artist: artist.into(),
             album: album.into(),
             length: None,
+            genre: String::new(),
         }
     }
 

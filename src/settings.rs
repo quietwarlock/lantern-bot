@@ -48,6 +48,9 @@ pub struct Settings {
     pub max_song_minutes: u32,
     /// Check GitHub Releases for a newer Lantern at startup (notify only).
     pub update_check: bool,
+    /// Last.fm API key (free) for `genre` play's online songs (1.12). Empty =
+    /// YouTube searches instead. `LASTFM_API_KEY` wins over this. Never shown back.
+    pub lastfm_api_key: String,
 }
 
 impl Default for Settings {
@@ -72,6 +75,7 @@ impl Default for Settings {
             max_per_user: 0,
             max_song_minutes: 0,
             update_check: true,
+            lastfm_api_key: String::new(),
         }
     }
 }
@@ -89,6 +93,7 @@ impl Settings {
         self.max_song_minutes = self.max_song_minutes.min(24 * 60);
         self.token = self.token.trim().trim_matches('"').trim_start_matches("Bot ").trim().to_string();
         self.owner = self.owner.trim().trim_matches('"').trim().to_string();
+        self.lastfm_api_key = self.lastfm_api_key.trim().trim_matches('"').trim().to_string();
         let mut folders: Vec<String> = Vec::new();
         for folder in self.library_folders.iter().map(|f| crate::library::normalize_folder(f)) {
             if !folder.is_empty() && !folders.iter().any(|f| f.eq_ignore_ascii_case(&folder)) {

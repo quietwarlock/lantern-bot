@@ -41,10 +41,11 @@ pub enum Need {
 }
 
 /// `radio` words that keep meaning autoplay, as before 1.10.
-const AUTOPLAY_WORDS: [&str; 13] = ["", "on", "yes", "true", "1", "off", "no", "false", "0", "soundcloud", "sc", "youtube", "yt"];
+const AUTOPLAY_WORDS: [&str; 12] = ["on", "yes", "true", "1", "off", "no", "false", "0", "soundcloud", "sc", "youtube", "yt"];
 
 /// 1.10: `radio` followed by anything other than an autoplay word (and the
-/// `/radio` slash command) searches internet radio stations.
+/// `/radio` slash command) searches internet radio stations. 1.12: bare
+/// `radio` lists popular stations; autoplay's state moved to bare `autoplay`.
 pub(crate) fn radio_means_search(command: &str, arg: &str, slash: bool) -> bool {
     command.eq_ignore_ascii_case("radio") && (slash || !AUTOPLAY_WORDS.contains(&arg.trim().to_ascii_lowercase().as_str()))
 }
@@ -82,6 +83,7 @@ pub fn lookup(command: &str) -> Option<(&'static str, Need)> {
         "rewind" | "rw" => ("rewind", Need::Controller),
         "autoplay" | "radio" => ("autoplay", Need::Controller),
         "station" | "stations" => ("station", Need::Listener),
+        "genre" | "genres" => ("genre", Need::Listener),
         "sleep" => ("sleep", Need::Controller),
         "save" => ("save", Need::Controller),
         "delete" => ("delete", Need::Controller),
@@ -102,6 +104,13 @@ pub enum From<'a> {
 }
 
 impl From<'_> {
+    /// The same source again, for handing on to another handler.
+    fn reborrow(&self) -> From<'_> {
+        match self {
+            From::Message(msg) => From::Message(msg),
+            From::Slash(cmd) => From::Slash(cmd),
+        }
+    }
     fn guild(&self) -> Option<GuildId> {
         match self {
             From::Message(msg) => msg.guild_id,
@@ -319,7 +328,7 @@ impl Handler {
                 controller
                     || in_playback_channel(ctx, &self.core, guild, user).await
                     // 1.7: queue before Lantern joins voice.
-                    || (matches!(name, "play" | "local" | "restore" | "station")
+                    || (matches!(name, "play" | "local" | "restore" | "station" | "genre")
                         && voice_channel(ctx, guild, user).is_none()
                         && bot_channel(&self.core, guild).await.is_none())
             }
@@ -342,6 +351,7 @@ impl Handler {
             "export" => return self.export(ctx, &from, guild, arg).await,
             "local" => return self.play(ctx, from, guild, &format!("local:{arg}"), settings).await,
             "station" => return self.station(ctx, from, guild, arg, settings).await,
+            "genre" => return self.genre(ctx, from, guild, arg, settings).await,
             "lyrics" => return self.lyrics(ctx, &from, guild, arg).await,
             "help" => return self.help(ctx, &from, settings).await,
             "queue" => return self.queue(ctx, &from, guild).await,
@@ -403,7 +413,12 @@ impl Handler {
                 }
             }
             "autoplay" => match arg.trim().to_ascii_lowercase().as_str() {
-                "" => Ok(core.set_autoplay(guild, None).await),
+                // 1.12: bare `autoplay` shows how it's set (it used to flip it).
+                "" => Ok(format!(
+                    "{} Change it with `{p}autoplay on`, `off`, `soundcloud` or `youtube`.",
+                    core.autoplay_status(guild),
+                    p = settings.prefix
+                )),
                 "on" | "yes" | "true" | "1" => Ok(core.set_autoplay(guild, Some(true)).await),
                 "off" | "no" | "false" | "0" => Ok(core.set_autoplay(guild, Some(false)).await),
                 "soundcloud" | "sc" => Ok(core.set_autoplay_source(guild, true).await),
@@ -531,18 +546,20 @@ impl Handler {
     }
 
     /// `radio` words (1.10): internet radio stations from Radio Browser, top 4 to pick from.
-    async fn station(&self, ctx: &Context, from: From<'_>, guild: GuildId, words: &str, settings: &Settings) {
-        if words.trim().is_empty() {
-            let p = &settings.prefix;
-            self.reply(ctx, &from, &format!("Say what to look for, like `{p}radio jazz` or `{p}radio tag:rock country:Germany`.")).await;
-            return;
-        }
+    /// Bare `radio` (1.12): the most popular stations to pick from.
+    async fn station(&self, ctx: &Context, from: From<'_>, guild: GuildId, words: &str, _settings: &Settings) {
+        let popular = words.trim().is_empty();
         let voice = match voice_channel(ctx, guild, from.user()) {
             Some(voice) => Some(voice),
             None => bot_channel(&self.core, guild).await,
         };
-        let stations = match crate::radiobrowser::search_words(words, 4).await {
+        let found = if popular { crate::radiobrowser::popular(4).await } else { crate::radiobrowser::search_words(words, 4).await };
+        let stations = match found {
             Ok(stations) if !stations.is_empty() => stations,
+            Ok(_) if popular => {
+                self.reply(ctx, &from, "Radio Browser listed no stations right now.").await;
+                return;
+            }
             Ok(_) => {
                 self.reply(ctx, &from, &format!("No radio stations match **{}**.", escape(words.trim()))).await;
                 return;
@@ -562,7 +579,7 @@ impl Handler {
         let (item, held_picker) = if hits.len() == 1 {
             (hits[0].item.clone(), None)
         } else {
-            match self.ask(ctx, &from, &hits, "Pick a station").await {
+            match self.ask(ctx, &from, &hits, if popular { "Popular stations: pick one" } else { "Pick a station" }).await {
                 Some(pair) => pair,
                 None => return,
             }
@@ -575,6 +592,63 @@ impl Handler {
         if let Some(message) = held_picker {
             if drop_held_picker(matches!(from, From::Slash(_)), answered) {
                 let _ = message.channel_id.delete_message(&ctx.http, message.id).await;
+            }
+        }
+    }
+
+    /// `genre` (1.12): the owner's library songs in that genre, shuffled, then
+    /// a genre lock that keeps playing it (library and online songs in turns).
+    /// `genre off` ends it; bare `genre` says what's on and lists library genres.
+    async fn genre(&self, ctx: &Context, from: From<'_>, guild: GuildId, arg: &str, settings: &Settings) {
+        let p = &settings.prefix;
+        let name = crate::genre::clean_name(arg);
+        let lower = name.to_ascii_lowercase();
+        if matches!(lower.as_str(), "off" | "stop" | "end" | "none") {
+            let text = self.core.stop_genre(guild);
+            self.core.publish().await;
+            self.reply(ctx, &from, &text).await;
+            return;
+        }
+        if name.is_empty() {
+            let now = match self.core.genre_name(guild) {
+                Some(genre) => format!("Playing genre **{}**. `{p}genre off` ends it.", escape(&genre)),
+                None => format!("Say a genre, like `{p}genre nu metal`. It plays your library's songs in that genre, then keeps going with more."),
+            };
+            let known = crate::library::with(|index| crate::genre::library_genres(index, 12));
+            let list = if known.is_empty() {
+                String::new()
+            } else {
+                let names: Vec<String> = known.iter().map(|(g, n)| format!("{} ({n})", escape(g))).collect();
+                format!("\nIn the library: {}", names.join(", "))
+            };
+            self.reply(ctx, &from, &format!("{now}{list}")).await;
+            return;
+        }
+        let voice = match voice_channel(ctx, guild, from.user()) {
+            Some(voice) => Some(voice),
+            None => bot_channel(&self.core, guild).await,
+        };
+        match self.core.start_genre(guild, &name).await {
+            Ok(start) => {
+                let count = start.items.len();
+                let from_library = start.items.iter().filter(|i| i.kind == Kind::File).count();
+                let answered = self.enqueue(ctx, &from, guild, voice, start.items, false).await;
+                if !answered {
+                    let source = if from_library > 0 {
+                        format!("Queued **{count}** of {} library song{} in **{}**, shuffled.", start.library_total, if start.library_total == 1 { "" } else { "s" }, escape(&name))
+                    } else {
+                        format!("No library songs are tagged **{}**, so it starts with songs found online.", escape(&name))
+                    };
+                    self.reply(ctx, &from, &format!("{source} When the queue ends it keeps playing **{}**. `{p}genre off` ends it.", escape(&name))).await;
+                }
+            }
+            Err(err) => {
+                // Last resort: a radio station for the genre.
+                self.core.ui.log(format!("Genre {name}: nothing found; offering radio stations"));
+                if matches!(from, From::Message(_)) {
+                    self.reply(ctx, &from, &format!("{err} Here are radio stations for it instead.")).await;
+                }
+                self.station(ctx, from.reborrow(), guild, &format!("tag:{name}"), settings).await;
             }
         }
     }
@@ -1107,11 +1181,12 @@ impl Handler {
              A search shows the top 4: react or type 1–4. `{p}play sc:` words searches SoundCloud\n\
              `{p}play local:` words or `{p}local` words · a song from the owner's music library\n\
              `{p}lyrics` · words for what's playing, or `{p}lyrics` song name\n\
-             `{p}radio` words · find an internet radio station (also tag:jazz, country:Germany), pick 1–4\n\n\
+             `{p}radio` words · find an internet radio station (also tag:jazz, country:Germany), pick 1–4. `{p}radio` alone: popular stations\n\
+             `{p}genre` name · your library's songs in that genre, then keeps playing it · `{p}genre off`\n\n\
              **Control**\n\
              `{p}pause` `{p}resume` `{p}skip` `{p}stop` (3+ listening: anyone's `{p}skip` is a vote) · `{p}volume` 0–200\n\
              `{p}seek` 1:30 · `{p}forward` 10 · `{p}rewind` 10\n\
-             `{p}loop` off/track/queue · `{p}autoplay` on/off/soundcloud/youtube · `{p}sleep` 30m / end / off\n\n\
+             `{p}loop` off/track/queue · `{p}autoplay` (shows it) on/off/soundcloud/youtube · `{p}sleep` 30m / end / off\n\n\
              **Queue**\n\
              `{p}fav` · `{p}fav list` · `{p}fav play` · `{p}fav remove` 2 · or ❤️ on Now playing\n\
              `{p}queue` · `{p}np` · `{p}remove` 3 · `{p}move` 5 1 · `{p}clear` · `{p}shuffle`\n\n\
@@ -1382,9 +1457,10 @@ pub fn slash_commands() -> Vec<CreateCommand> {
         plain("seek", "Jump to a time in the track").add_option(text("time", "Like 1:30", true)),
         plain("forward", "Skip ahead").add_option(number("seconds", "Default 10", false, 1, 36_000)),
         plain("rewind", "Go back").add_option(number("seconds", "Default 10", false, 1, 36_000)),
-        plain("radio", "Find an internet radio station and play it")
-            .add_option(text("search", "Station name, or tag:jazz / country:Germany", true)),
-        plain("autoplay", "Keep playing related songs when the queue ends").add_option(
+        plain("radio", "Find an internet radio station and play it (blank: popular stations)")
+            .add_option(text("search", "Station name, or tag:jazz / country:Germany", false)),
+        plain("genre", "Play a genre: your library's songs, then more of it").add_option(text("name", "Like nu metal, jazz, or off to stop", false)),
+        plain("autoplay", "Keep playing related songs when the queue ends (blank: show the setting)").add_option(
             text("state", "on, off, or where related songs come from", false)
                 .add_string_choice("on", "on")
                 .add_string_choice("off", "off")
@@ -1827,9 +1903,12 @@ mod tests {
 
     #[test]
     fn radio_searches_stations_but_old_autoplay_words_still_work() {
-        for old in ["", "on", "OFF", " soundcloud ", "sc", "youtube", "yt", "yes", "0"] {
+        for old in ["on", "OFF", " soundcloud ", "sc", "youtube", "yt", "yes", "0"] {
             assert!(!radio_means_search("radio", old, false), "!radio {old} is still autoplay");
         }
+        assert!(radio_means_search("radio", "", false), "bare !radio lists popular stations (1.12)");
+        assert!(radio_means_search("radio", "   ", false));
+        assert!(radio_means_search("radio", "", true), "/radio with no search too");
         assert!(radio_means_search("radio", "jazz", false));
         assert!(radio_means_search("RADIO", "tag:rock country:Germany", false));
         assert!(radio_means_search("radio", "on", true), "/radio always searches");
@@ -1846,6 +1925,7 @@ mod tests {
         assert_eq!(lookup("ff"), Some(("forward", Need::Controller)));
         assert_eq!(lookup("dj"), Some(("dj", Need::Admin)));
         assert_eq!(lookup("q"), Some(("queue", Need::Anyone)));
+        assert_eq!(lookup("genres"), Some(("genre", Need::Listener)));
     }
 
     #[test]
@@ -1857,13 +1937,13 @@ mod tests {
         for name in [
             "play", "load", "queue", "np", "help", "history", "playlists", "volume", "skip", "pause", "resume", "stop",
             "remove", "move", "clear", "shuffle", "loop", "seek", "forward", "rewind", "autoplay", "save", "delete", "dj",
-            "local", "lyrics", "import", "export", "replay", "fav", "sleep", "restore",
+            "local", "lyrics", "import", "export", "replay", "fav", "sleep", "restore", "genre",
         ] {
             assert_eq!(lookup(name).map(|l| l.0), Some(name), "{name} is a prefix command");
             assert!(slash.iter().any(|s| s == name), "/{name} is missing");
         }
         assert!(slash.iter().any(|s| s == "radio"), "/radio searches stations (1.10)");
-        assert_eq!(slash.len(), 33);
+        assert_eq!(slash.len(), 34);
     }
 
     #[test]

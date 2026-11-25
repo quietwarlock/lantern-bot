@@ -1,4 +1,4 @@
-# Lantern server (no window, web page on 8080) for Linux / Unraid. Build: docker build -t lantern:1.11.1 .
+# Lantern server (no window, web page on 8080) for Linux / Unraid. Build: docker build -t lantern:1.12.0 .
 FROM rust:1-bookworm AS build
 RUN apt-get update && apt-get install -y --no-install-recommends cmake && rm -rf /var/lib/apt/lists/*
 WORKDIR /src

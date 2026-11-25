@@ -7,6 +7,7 @@
 //! - [`commands`] handles prefix commands, slash commands, buttons, and voice events.
 //! - [`media`] turns a link, a search, or a file on this PC into a stream Songbird can read.
 //! - [`stream`] is the seekable HTTP audio source.
+//! - [`genre`] picks songs for `genre` play: library tags, Last.fm, YouTube (1.12).
 //! - [`radiobrowser`] searches internet radio stations (radio-browser.info, 1.10).
 //! - [`queue`] holds the pure queue rules (remove, move, shuffle, loop).
 //! - [`store`] saves per-server settings, playlists, and history.
@@ -38,6 +39,7 @@ pub mod install;
 pub mod media;
 pub mod playlist_file;
 pub mod features;
+pub mod genre;
 pub mod queue;
 pub mod radiobrowser;
 pub mod settings;

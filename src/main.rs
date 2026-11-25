@@ -507,6 +507,16 @@ impl LanternApp {
             ui.checkbox(&mut self.settings.update_check, "Check for updates at startup")
                 .on_hover_text("Asks GitHub whether a newer Lantern is out and says so here. Nothing is downloaded.");
         });
+        ui.horizontal(|ui| {
+            ui.label(RichText::new("Last.fm API key").color(MUTED))
+                .on_hover_text("Optional, for genre play. A free key from last.fm/api adds Last.fm's top songs for each genre. Without one, genre play uses YouTube searches.");
+            ui.add(
+                egui::TextEdit::singleline(&mut self.settings.lastfm_api_key)
+                    .password(!self.show_token)
+                    .desired_width(300.0)
+                    .hint_text("Optional, for genre play"),
+            );
+        });
         self.library_panel(ui);
         ui.horizontal(|ui| {
             if ui.button("Save settings").clicked() {

@@ -252,6 +252,7 @@ fn guild_json(g: &GuildView) -> Value {
         "loop": g.loop_mode.label(),
         "autoplay": g.autoplay,
         "soundcloud_autoplay": g.soundcloud_autoplay,
+        "genre": g.genre,
         "volume": g.volume,
         "recent": g.recent.iter().map(|(at, title)| json!({ "at": at, "title": title })).collect::<Vec<_>>(),
     })
@@ -323,6 +324,9 @@ enum GuildRequest {
     Import { name: String, text: String },
     /// A station from the Radio tab, by its Radio Browser ID (1.10).
     Radio { uuid: String },
+    /// Genre play in Discord (1.12).
+    Genre { name: String },
+    GenreOff,
 }
 
 fn guild_id(text: &str) -> Result<u64, (StatusCode, Json<Value>)> {
@@ -495,14 +499,14 @@ fn station_json(station: &crate::radiobrowser::Station) -> Value {
 }
 
 /// Internet radio search (1.10): name, tag (genre) and country, any mix.
+/// 1.12: no search words lists the most popular stations (`"popular": true`).
 async fn radio_search(Query(query): Query<RadioQuery>) -> Reply {
     let field = |v: Option<String>| v.unwrap_or_default().trim().chars().take(100).collect::<String>();
     let query = crate::radiobrowser::Query { name: field(query.name), tag: field(query.tag), country: field(query.country) };
-    if query.is_empty() {
-        return Err(bad("Type a station name, a tag like jazz, or a country."));
-    }
-    let stations = crate::radiobrowser::search(&query, 30).await.map_err(|e| (StatusCode::BAD_GATEWAY, Json(json!({ "error": e }))))?;
-    Ok(Json(json!({ "stations": stations.iter().map(station_json).collect::<Vec<_>>() })))
+    let popular = query.is_empty();
+    let found = if popular { crate::radiobrowser::popular(30).await } else { crate::radiobrowser::search(&query, 30).await };
+    let stations = found.map_err(|e| (StatusCode::BAD_GATEWAY, Json(json!({ "error": e }))))?;
+    Ok(Json(json!({ "stations": stations.iter().map(station_json).collect::<Vec<_>>(), "popular": popular })))
 }
 
 async fn guild_action(State(web): State<Arc<Web>>, UrlPath(id): UrlPath<String>, Json(request): Json<GuildRequest>) -> Reply {
@@ -527,6 +531,14 @@ async fn guild_action(State(web): State<Arc<Web>>, UrlPath(id): UrlPath<String>,
             Action::Play(query)
         }
         GuildRequest::Replay { at, title } => Action::Replay(at, title),
+        GuildRequest::Genre { name } => {
+            let name = crate::genre::clean_name(&name);
+            if name.is_empty() {
+                return Err(bad("Type a genre, like jazz or nu metal."));
+            }
+            Action::Genre(name)
+        }
+        GuildRequest::GenreOff => Action::GenreOff,
         GuildRequest::AddPath { path } => {
             let folders = web.ui.settings().library_folders;
             let real = inside_library(&path, &folders).map_err(bad)?;
@@ -629,6 +641,10 @@ pub fn settings_json(web: &Web, settings: &Settings) -> Value {
     if let Some(fields) = value.as_object_mut() {
         fields.remove("token");
         fields.insert("token_set".into(), json!(!settings.token.trim().is_empty()));
+        // 1.12: the Last.fm key is write-only too.
+        fields.remove("lastfm_api_key");
+        fields.insert("lastfm_key_set".into(), json!(!settings.lastfm_api_key.trim().is_empty()));
+        fields.insert("lastfm_key_from_env".into(), json!(std::env::var(crate::genre::KEY_ENV).is_ok_and(|k| !k.trim().is_empty())));
         fields.insert("token_from_env".into(), json!(web.token_from_env));
         fields.insert("library_from_env".into(), json!(web.library_from_env));
     }
@@ -646,6 +662,7 @@ pub fn apply_changes(current: &Settings, changes: &Value) -> Result<(Settings, b
     let Value::Object(fields) = changes else { return Err("Send the settings as a JSON object.".into()) };
     let mut base = serde_json::to_value(current).map_err(|e| e.to_string())?;
     let mut new_token = None;
+    let mut new_lastfm: Option<String> = None;
     for (key, value) in fields {
         match key.as_str() {
             "token" => match value {
@@ -653,7 +670,19 @@ pub fn apply_changes(current: &Settings, changes: &Value) -> Result<(Settings, b
                 Value::String(_) | Value::Null => {}
                 _ => return Err("token: paste the token as text.".into()),
             },
-            "token_set" | "token_from_env" | "library_from_env" => {}
+            // A new key replaces the old one; `none` removes it; empty keeps it.
+            "lastfm_api_key" => match value {
+                Value::String(text) if text.trim().eq_ignore_ascii_case("none") => new_lastfm = Some(String::new()),
+                Value::String(text) if !text.trim().is_empty() => {
+                    if !crate::genre::valid_key(text.trim()) {
+                        return Err("lastfm_api_key: a Last.fm API key is 32 letters and digits (0-9, a-f).".into());
+                    }
+                    new_lastfm = Some(text.trim().to_string());
+                }
+                Value::String(_) | Value::Null => {}
+                _ => return Err("lastfm_api_key: paste the key as text.".into()),
+            },
+            "token_set" | "token_from_env" | "library_from_env" | "lastfm_key_set" | "lastfm_key_from_env" => {}
             _ => {
                 let Some(slot) = base.get_mut(key) else { return Err(format!("{key} isn't a Lantern setting.")) };
                 *slot = value.clone();
@@ -664,6 +693,9 @@ pub fn apply_changes(current: &Settings, changes: &Value) -> Result<(Settings, b
         }
     }
     let mut settings: Settings = serde_json::from_value(base).map_err(|e| e.to_string())?;
+    if let Some(key) = new_lastfm {
+        settings.lastfm_api_key = key;
+    }
     let replaced = new_token.is_some();
     if let Some(token) = new_token {
         crate::setup::check_token(&token)?;
@@ -776,9 +808,14 @@ fn web_reply(web: &Web, message: impl Into<String>) -> Reply {
     Ok(Json(json!({ "message": message.into(), "queue": web_queue_json(&web.player.snapshot()) })))
 }
 
+/// Songs one genre add puts on the web queue.
+const WEB_GENRE_SONGS: usize = 25;
+
 #[derive(Deserialize)]
 struct WebAdd {
     query: Option<String>,
+    /// Genre play (1.12): library songs in that genre, topped up with online ones.
+    genre: Option<String>,
     path: Option<String>,
     uuid: Option<String>,
     mode: Option<String>,
@@ -789,7 +826,21 @@ struct WebAdd {
 async fn web_add(State(web): State<Arc<Web>>, Json(request): Json<WebAdd>) -> Reply {
     let placement = Placement::parse(request.mode.as_deref());
     let mut station = None;
-    let items = if let Some(path) = request.path.as_deref().filter(|p| !p.trim().is_empty()) {
+    let items = if let Some(genre) = request.genre.as_deref().map(crate::genre::clean_name).filter(|g| !g.is_empty()) {
+        let settings = web.ui.settings();
+        let key = crate::genre::lastfm_key(&settings.lastfm_api_key);
+        let (mut items, from_library) = crate::genre::web_batch(&genre, key.as_deref(), WEB_GENRE_SONGS).await;
+        if items.is_empty() {
+            return Err(bad(format!("Couldn't find any {genre} songs. Try the Radio tab with the genre {genre}.")));
+        }
+        fastrand::shuffle(&mut items);
+        let added = web.player.change(|q| q.add(items.clone(), placement)).map_err(bad)?;
+        if added == 0 {
+            return Err(bad(format!("The web queue is full ({} songs).", crate::webplayer::MAX_ENTRIES)));
+        }
+        let online = added.saturating_sub(from_library);
+        return web_reply(&web, format!("{genre}: added {added} songs ({} from your library, {online} found online)", from_library.min(added)));
+    } else if let Some(path) = request.path.as_deref().filter(|p| !p.trim().is_empty()) {
         let folders = web.ui.settings().library_folders;
         let real = inside_library(path, &folders).map_err(bad)?;
         let (items, _) = tokio::task::spawn_blocking(move || {
@@ -1132,6 +1183,28 @@ mod tests {
         assert_eq!(s.token, other);
     }
 
+    #[tokio::test(flavor = "multi_thread")]
+    async fn the_lastfm_key_is_write_only() {
+        let current = quiet_settings();
+        let key = "0123456789abcdef0123456789abcdef";
+        let (s, _) = apply_changes(&current, &json!({ "lastfm_api_key": key })).unwrap();
+        assert_eq!(s.lastfm_api_key, key);
+        let (kept, _) = apply_changes(&s, &json!({ "lastfm_api_key": "", "lastfm_key_set": true })).unwrap();
+        assert_eq!(kept.lastfm_api_key, key, "an empty box keeps the key");
+        let (gone, _) = apply_changes(&s, &json!({ "lastfm_api_key": "none" })).unwrap();
+        assert!(gone.lastfm_api_key.is_empty());
+        assert!(apply_changes(&current, &json!({ "lastfm_api_key": "not a key" })).unwrap_err().starts_with("lastfm_api_key:"));
+        let dir = temp("lastfm");
+        let ui = UiState::new(s.clone());
+        let control = Arc::new(BotControl::new(bot::spawn(ui.clone())));
+        let library = Library::new(ui.clone(), dir.join("lantern-library.json"));
+        let web = Web::new(ui, control, library, dir.join("lantern-settings.json"), false, None);
+        let _ = std::fs::remove_dir_all(&dir);
+        let shown = settings_json(&web, &s).to_string();
+        assert!(!shown.contains(key), "the key is never sent to the page");
+        assert!(shown.contains("\"lastfm_key_set\":true"));
+    }
+
     #[test]
     fn library_paths_stay_inside_the_library() {
         let dir = temp("inside");
@@ -1320,8 +1393,11 @@ mod tests {
         }
         let top: Value = http.get(format!("{base}/api/browse")).send().await.unwrap().json().await.unwrap();
         assert!(top["folders"].as_array().unwrap().is_empty());
-        // Radio: an empty search and a made-up station ID are refused before anything goes online.
-        let empty = http.get(format!("{base}/api/radio/search")).query(&[("name", "  ")]).send().await.unwrap();
+        // Radio: a made-up station ID is refused before anything goes online
+        // (an empty search lists popular stations since 1.12). So is an empty genre.
+        let empty = http.post(format!("{base}/api/guild/1")).json(&json!({ "action": "genre", "name": "  " })).send().await.unwrap();
+        assert_eq!(empty.status(), 400);
+        let empty = http.post(format!("{base}/api/web/add")).json(&json!({ "genre": "  " })).send().await.unwrap();
         assert_eq!(empty.status(), 400);
         let fake = http.post(format!("{base}/api/guild/1")).json(&json!({ "action": "radio", "uuid": "../../etc/passwd" })).send().await.unwrap();
         assert_eq!(fake.status(), 400);

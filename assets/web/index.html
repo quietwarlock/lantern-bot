@@ -225,6 +225,11 @@ ol.steps li{margin:6px 0}
       </div>
       <div class="card">
         <div class="search"><svg class="i"><use href="#i-search"/></svg><input type="search" id="w-q" placeholder="Search YouTube, or paste a link" onkeydown="if(event.key==='Enter')wsearch()" autocomplete="off"></div>
+        <div class="row" style="margin-top:8px">
+          <input type="text" id="w-genre" class="grow" maxlength="60" placeholder="Genre, like nu metal or jazz" onkeydown="if(event.key==='Enter')webGenre('now')" autocomplete="off">
+          <button class="sm" onclick="webGenre('now')" title="Your library's songs in this genre, shuffled, topped up with songs found online"><svg class="i f"><use href="#i-play"/></svg>Play genre</button>
+          <button class="sm" onclick="discordGenre($('w-genre').value)" title="Play this genre in Discord and keep playing it when the queue ends"><svg class="i"><use href="#i-discord"/></svg>Send to Discord</button>
+        </div>
         <div id="w-results" class="hidden">
           <div class="row" style="margin:12px 0 4px"><h2 class="grow" style="margin:0">Results</h2><button class="sm ghost" onclick="closeResults()">Close</button></div>
           <ul class="list" id="w-rlist"></ul>
@@ -261,6 +266,7 @@ ol.steps li{margin:6px 0}
               <button id="loop" onclick="act({action:'loop',mode:nextLoop(cur.loop)})" title="Off, this track, whole queue"></button>
             </div>
             <label class="check" style="margin-top:8px"><input type="checkbox" id="autoplay" onchange="act({action:'autoplay',on:this.checked})"><div>Autoplay<small>Keeps playing related songs when the queue ends</small></div></label>
+            <div class="row hidden" id="genrerow" style="margin-top:8px"><span class="grow muted" id="genretext"></span><button class="sm" onclick="act({action:'genre_off'})" title="Stop keeping to this genre. Songs already queued still play.">End genre</button></div>
             <label class="check"><input type="checkbox" id="scauto" onchange="act({action:'autoplay_soundcloud',on:this.checked})"><div>From SoundCloud<small>Autoplay picks related SoundCloud songs instead of YouTube ones</small></div></label>
             <div class="row" style="margin-top:10px"><span class="muted">Volume</span><input type="range" id="vol" min="0" max="200" class="grow" oninput="volDrag=true;fill(this);volv.textContent=this.value+'%'" onchange="volDrag=false;act({action:'volume',level:+this.value})"><span id="volv" class="muted" style="width:44px;text-align:right">0%</span></div>
             <div class="muted">Applies now and is remembered for this server.</div>
@@ -276,6 +282,10 @@ ol.steps li{margin:6px 0}
         <div class="row" style="margin-top:12px">
           <input type="text" id="query" class="grow" placeholder="Link or search (local: words searches the music library)" onkeydown="if(event.key==='Enter')addQuery()">
           <button class="pri" onclick="addQuery()">Add</button>
+        </div>
+        <div class="row" style="margin-top:8px">
+          <input type="text" id="d-genre" class="grow" maxlength="60" placeholder="Genre, like nu metal: library songs first, then keeps playing it" onkeydown="if(event.key==='Enter')discordGenre(this.value)">
+          <button onclick="discordGenre($('d-genre').value)">Play genre</button>
         </div>
         <div class="row" style="margin-top:8px">
           <input type="text" id="addpath" class="grow" placeholder="File or folder in the music library, like /music/Artist/Album" onkeydown="if(event.key==='Enter')addPath()">
@@ -341,6 +351,7 @@ ol.steps li{margin:6px 0}
       <div class="card">
         <h2>Bot</h2>
         <div class="field"><span>Bot token</span><div><input type="password" id="s_token" autocomplete="off" placeholder="Paste a new token to replace it"><div class="muted" id="tokeninfo"></div></div></div>
+        <div class="field"><span>Last.fm API key</span><div><input type="password" id="s_lastfm" autocomplete="off" maxlength="40" placeholder="Optional, for genre play"><div class="muted" id="lastfminfo"></div></div></div>
         <div class="field"><span>Owner ID</span><div><input type="text" id="s_owner" placeholder="Optional"><div class="muted">Blank: anyone can control Lantern, unless a server sets a DJ role with dj. Anyone in the voice channel can always add songs.</div></div></div>
         <div class="field"><span>Command prefix</span><div><input type="text" id="s_prefix" style="max-width:90px"></div></div>
         <div class="field"><span>Default volume</span><div><div class="row"><input type="range" id="s_volume" min="0" max="200" class="grow" oninput="fill(this);s_volv.textContent=this.value+'%'"><span id="s_volv" class="muted" style="width:44px;text-align:right"></span></div><div class="muted">For servers that haven't set their own volume.</div></div></div>
@@ -482,6 +493,7 @@ function go(p){if(!PAGES.some(x=>x[0]===p))p='listen';
   document.querySelectorAll('[data-p]').forEach(a=>a.classList.toggle('on',a.dataset.p===p));
   if(location.hash!=='#'+p)history.replaceState(null,'','#'+p);try{localStorage.setItem('lantern.page',p)}catch(e){}
   if(p==='activity'){const el=$('log');el.scrollTop=el.scrollHeight}
+  if(p==='radio'&&!radioLoaded){radioLoaded=true;radioPopular()}
   window.scrollTo(0,0)}
 window.addEventListener('hashchange',()=>go(location.hash.slice(1)));
 
@@ -602,6 +614,8 @@ async function webAdd(body,mode){
   if(r.queue){wq=r.queue;drawWeb()}
   if(mode==='now'&&wq.current)start(wq.current,0);
   return r}
+async function webGenre(mode){const g=$('w-genre').value.trim();if(!g){toast('Type a genre, like jazz or nu metal.');return}
+  toast('Finding '+g+' songs…');const r=await webAdd({genre:g},mode);if(r&&r.ok)$('w-genre').value=''}
 function webPath(path,mode){if(path)webAdd({path},mode)}
 function webStation(i,mode){const s=stations[i];if(s)webAdd({uuid:s.uuid},mode)}
 let results=[];
@@ -654,6 +668,7 @@ function render(){
     setHTML($('pause'),cur.paused?ic('play')+'Resume':ic('pause')+'Pause');
     setHTML($('loop'),ic(cur.loop==='track'?'repeat1':'repeat')+'Loop: '+cur.loop);$('loop').classList.toggle('on',cur.loop!=='off');
     $('autoplay').checked=cur.autoplay;$('scauto').checked=cur.soundcloud_autoplay;
+    $('genrerow').classList.toggle('hidden',!cur.genre);if(cur.genre)$('genretext').textContent='Genre: '+cur.genre+' (keeps playing it when the queue ends)';
     if(!volDrag){$('vol').value=cur.volume;fill($('vol'));$('volv').textContent=cur.volume+'%'}}
   const up=cur?cur.upcoming:[];$('qcount').textContent=up.length?`· ${up.length} up next`:'';
   $('shuffle').disabled=up.length<2;$('clear').disabled=!up.length;
@@ -664,6 +679,8 @@ function render(){
   drawBrowseNote()}
 function replay(i){const p=cur&&cur.recent[i];if(p)act({action:'replay',at:p.at,title:p.title})}
 function addQuery(){const q=$('query').value.trim();if(!q)return;if(!cur){toast(NEED_VOICE);return}act({action:'play',query:q}).then(r=>{if(r&&r.ok)$('query').value=''});toast('Looking it up…')}
+function discordGenre(g){g=(g||'').trim();if(!g){toast('Type a genre, like jazz or nu metal.');return}if(!cur){toast(NEED_VOICE);return}
+  toast('Finding '+g+' songs…');act({action:'genre',name:g}).then(r=>{if(r&&r.ok){$('d-genre').value='';$('w-genre').value=''}})}
 function addPath(){const p=$('addpath').value.trim();if(!p)return;if(!cur){toast('Start the bot to add files.');return}act({action:'add_path',path:p})}
 function importList(input){const f=input.files[0];input.value='';if(!f)return;if(!cur){toast('Start the bot to import.');return}
   f.text().then(text=>act({action:'import',name:f.name,text}))}
@@ -679,6 +696,8 @@ async function loadSettings(){
   for(const k of SETTINGS_NUM)$('s_'+k).value=settings[k];
   for(const k of SETTINGS_BOOL)$('s_'+k).checked=settings[k];
   $('s_volv').textContent=settings.volume+'%';fill($('s_volume'));$('s_token').value='';
+  $('s_lastfm').value='';
+  $('lastfminfo').textContent=(settings.lastfm_key_from_env?'LASTFM_API_KEY is set on the container and is used. ':settings.lastfm_key_set?'Set. It is never shown here; paste a new one to replace it, or type none to remove it. ':'Not set: genre play finds online songs with YouTube searches. ')+'A free key from last.fm/api adds Last.fm\'s top songs for each genre.';
   $('tokeninfo').textContent=(settings.token_set?'Set. It is never shown here; paste a new one to replace it.':'Not set yet. Paste the token from the Discord Developer Portal.')+(settings.token_from_env?' DISCORD_TOKEN is set on the container and is used at every start.':'');
   loadLibrary()}
 async function loadLibrary(){
@@ -692,7 +711,7 @@ function addFolder(){const f=$('newfolder').value.trim();if(!f)return;$('newfold
 function removeFolder(i){saveFolders(settings.library_folders.filter((_,j)=>j!==i))}
 async function saveSettings(e){e.preventDefault();
   const body={};for(const k of SETTINGS_TEXT)body[k]=$('s_'+k).value;for(const k of SETTINGS_NUM){const v=$('s_'+k).value;body[k]=v===''?0:Math.round(+v)}
-  for(const k of SETTINGS_BOOL)body[k]=$('s_'+k).checked;const t=$('s_token').value.trim();if(t)body.token=t;
+  for(const k of SETTINGS_BOOL)body[k]=$('s_'+k).checked;const t=$('s_token').value.trim();if(t)body.token=t;const lf=$('s_lastfm').value.trim();if(lf)body.lastfm_api_key=lf;
   const r=await post('/api/settings',body);if(r.ok){loadSettings();loadSetup()}}
 async function loadSetup(){const s=await (await fetch('/api/setup')).json();$('portal').href=s.portal;
   $('invitestep').innerHTML=s.invite?`Open <a href="${esc(s.invite)}" target="_blank" rel="noopener">this invite link</a>, pick your server, and press Authorize.`:'Save the token first, then the invite link shows here.'}
@@ -744,18 +763,22 @@ async function libSearch(){const q=$('l-q').value.trim();
     $('bnote').textContent=libHits.length?`${libHits.length}${libHits.length==100?'+':''} song${libHits.length==1?'':'s'}`:''}catch(e){toast(e.message)}}
 
 /* ------------------------------------------------------------ radio */
-let stations=[];
+let stations=[],radioLoaded=false,radioIsPopular=false;
+async function radioPopular(){$('rlist').innerHTML='<li class="empty">Loading popular stations…</li>';$('rnote').textContent='';
+  try{const r=await fetch('/api/radio/search');const j=await r.json().catch(()=>({}));
+    if(!r.ok){$('rlist').innerHTML='';$('rnote').textContent=j.error||'Radio Browser did not answer.';return}
+    stations=j.stations||[];radioIsPopular=true;drawRadio()}catch(e){$('rnote').textContent=e.message}}
 const QUICK=['nu metal','rock','jazz','lofi','classical','hip hop','electronic','country','80s','metal'];
 $('r-quick').innerHTML=QUICK.map(t=>`<button class="sm ghost" type="button" onclick="quickTag('${t}')">${esc(t)}</button>`).join('');
 function quickTag(t){$('r_name').value='';$('r_country').value='';$('r_tag').value=t;radioSearch()}
 async function radioSearch(e){
   if(e)e.preventDefault();
   const q={name:$('r_name').value.trim(),tag:$('r_tag').value.trim(),country:$('r_country').value.trim()};
-  if(!q.name&&!q.tag&&!q.country){toast('Type a station name, a genre like jazz, or a country.');return}
+  if(!q.name&&!q.tag&&!q.country){radioPopular();return}
   $('rgo').disabled=true;$('rnote').textContent='';$('rlist').innerHTML='<li class="empty">Searching…</li>';
   try{const r=await fetch('/api/radio/search?'+new URLSearchParams(q));const j=await r.json().catch(()=>({}));
     if(!r.ok){stations=[];$('rlist').innerHTML='';$('rnote').textContent=j.error||'Radio search failed.';return}
-    stations=j.stations||[];drawRadio()}
+    stations=j.stations||[];radioIsPopular=!!j.popular;drawRadio()}
   finally{$('rgo').disabled=false}}
 function drawRadio(){
   const rows=stations.map((s,i)=>{const fmt=[s.codec,s.bitrate?s.bitrate+' kbps':''].filter(Boolean).join(' ');
@@ -763,7 +786,7 @@ function drawRadio(){
     return `<li class="item"><div class="art">${artHTML(s.favicon,'radio')}</div><div class="meta"><div class="tt" title="${esc(s.name)}">${esc(s.name)}</div><div class="st">${sub}</div></div>
       <div class="acts"><button class="ic" title="Play here now" onclick="webStation(${i},'now')">${ic('play')}</button><button class="ic" title="Add to the web queue" onclick="webStation(${i},'end')">${ic('plus')}</button><button class="ic" title="Send to Discord" onclick="queueStation(${i})">${ic('discord')}</button></div></li>`});
   $('rlist').innerHTML=rows.join('')||`<li class="empty">${ic('radio')}No stations match.</li>`;
-  $('rnote').textContent=stations.length?`${stations.length} station${stations.length==1?'':'s'}`:''}
+  $('rnote').textContent=stations.length?(radioIsPopular?`Popular stations (most votes on radio-browser.info). Search for more.`:`${stations.length} station${stations.length==1?'':'s'}`):''}
 function queueStation(i){const s=stations[i];if(!s)return;if(!cur){toast(NEED_VOICE);return}act({action:'radio',uuid:s.uuid})}
 
 /* ------------------------------------------------------------ start */

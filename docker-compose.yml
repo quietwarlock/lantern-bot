@@ -2,7 +2,7 @@
 # stop the Windows app before starting this.
 services:
   lantern:
-    image: lantern:1.11.1
+    image: lantern:1.12.0
     container_name: lantern
     restart: unless-stopped
     user: "99:100"            # Unraid nobody:users
@@ -16,6 +16,7 @@ services:
       - TZ=Etc/UTC
       - LANTERN_LIBRARY=/music  # local: library search; remove to turn the library off
       # - DISCORD_TOKEN=...     # optional; otherwise the token in /config/lantern-settings.json is used
+      # - LASTFM_API_KEY=...    # optional; Last.fm top songs for genre play (else YouTube searches)
     volumes:
       - /mnt/user/appdata/lantern:/config
       - /mnt/user/music:/music:ro

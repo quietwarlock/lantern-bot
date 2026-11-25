@@ -30,6 +30,7 @@ Environment:
   DISCORD_TOKEN    Bot token. Overrides the token in lantern-settings.json. Never written to disk.
   LANTERN_LIBRARY  Music library folders, comma separated (e.g. /music). Overrides the settings file.
   LANTERN_WEB_PORT Port for the web page (default 8080). `off` turns the page off. No sign-in: keep it on your home network.
+  LASTFM_API_KEY   Optional Last.fm API key for genre play (otherwise YouTube searches).
 ";
 
 /// How long to wait before signing in again after Discord drops the session.

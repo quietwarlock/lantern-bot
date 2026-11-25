@@ -1,7 +1,7 @@
 ---
-title: "Lantern 1.11.1 Guide"
+title: "Lantern 1.12.0 Guide"
 subtitle: "Self-hosted Discord music bot for Windows"
-date: "November 11, 2026"
+date: "November 25, 2026"
 ---
 
 # What Lantern does
@@ -15,6 +15,7 @@ Lantern is a Discord music bot that runs on your own Windows PC. It has its own 
 - An optional owner and a per-server DJ role decide who can control playback.
 - Leaves voice by itself after it has been idle for a while.
 - If YouTube's normal routes stop working, it falls back to yt-dlp so songs keep playing.
+- **1.12.0:** `genre <name>` plays your library's songs in a genre and keeps playing that genre (with songs found online for variety); `radio` alone lists popular stations; `autoplay` alone shows the setting.
 - **1.11.0:** The Docker version's web page has a new look and its own web player: listen on the speakers of any computer or phone, with a queue of its own that doesn't touch Discord.
 - **1.10.0:** Search internet radio stations (Radio Browser) with `radio <words>`, `/radio`, or the web page's Radio panel, and browse the music library on the web page.
 - **1.8.3:** If the voice connection drops, Lantern pauses, rejoins the same channel, and carries on. There is also a Docker version for a home server (see *Running on a server with Docker*).
@@ -131,12 +132,14 @@ Lantern can also run without its window, in Docker on a home server such as Unra
 - **One at a time.** A bot token can only be used by one Lantern. Close the Windows app (and untick *Start with Windows*) before the server copy starts, and stop the server copy before you open the Windows app again.
 - **Config folder.** On Unraid it is `/mnt/user/appdata/lantern`, mounted as `/config`. It holds `lantern-settings.json` (copied from your Windows folder, token included), `lantern-data.json`, `lantern-log.txt`, and the self-updating yt-dlp.
 - **Music library.** Your music share is mounted read-only as `/music` and searched with `/local` and `play local:`. It is rescanned each time the container starts.
+- **Last.fm key (optional).** For `genre` play, a free key from last.fm/api can go in Settings or in the container variable `LASTFM_API_KEY` (which wins). Without one, genre play finds online songs with YouTube searches.
 - **The web page (1.9).** On Unraid's Docker tab, click Lantern's icon and choose **WebUI** (or open `http://<server>:8094/`). It has no sign-in, so it only works on your home network or Tailscale. Since 1.11 it has six pages: **Listen** (the web player), **Discord** (whether the bot is online, Start and Stop bot, now playing, the queue, recently played), **Library**, **Radio**, **Settings** and **Activity** (the live log). On a computer they're in a sidebar; on a phone, in a bar at the bottom. The web player's mini player stays at the bottom of every page.
 - **Web player (1.11).** The **Listen** page plays music in your browser, on the speakers of the computer or phone you have the page open on. It has its own queue, separate from the Discord queue, and the two can play at the same time. Type in the search box and press Enter to search YouTube (start with `sc:` to search SoundCloud), then press ▶ to play now, the list button to play next, or **+** to add to the end; or paste a link (YouTube, SoundCloud, Spotify, Apple Music, a radio stream). On **Library** and **Radio**, ▶ plays a song, folder or station here and **+** adds it to the web queue; the speech-bubble button sends it to Discord instead. Controls: play/pause, previous (restarts the song if it's past 4 seconds), next, a seek bar (not for live radio), shuffle what's up next, repeat (off, whole queue, this song), volume and mute for this device only, drag songs or use the arrows to move them, ✕ to remove, *Clear played* and *Clear*. A song that can't play shows why and moves on after a moment; a dropped station reconnects by itself. On a phone, the lock screen shows the song with play/pause and skip. The queue is saved on the server, so it's still there tomorrow or on another device. *Even out volume* applies here too.
 - **Player on the page.** Pause/resume, skip, leave, loop, autoplay and *From SoundCloud*, volume, shuffle, clear, move songs up or down, remove, and click a recently played song to queue it again. *Add* takes a link or a search (`local:` words search your music library); *Add files* takes a file or folder path inside the library, like `/music/Artist/Album`. *Import playlist* and *Export queue* work like the window.
 - **Browse music (1.10).** The **Library** page (1.11; *Browse music* before) opens your library folders like a file explorer. Click a folder to open it, use the path at the top to go back, and type in the filter box to narrow the folder you're in. Songs show title, artist and length when the library scan read their tags. The speech-bubble button sends a song or folder (with the folders inside it, up to 1000 songs) to Discord, and *Send to Discord* sends the folder you're in. Songs go to the server chosen on the **Discord** page; Lantern has to be in a voice channel (or have a queue) there. The search box at the top searches the whole library by title, artist, album or file name. Only the library folders can be browsed.
 - **Radio (1.10).** The **Radio** page searches internet radio stations from the free Radio Browser directory (radio-browser.info). Fill in a station name, a tag or genre (like `jazz`), a country (like `Germany` or `DE`), or any mix, and press **Search**, or tap one of the genre buttons. Each station shows its logo, country, tags, codec and bitrate. The speech-bubble button queues it in Discord (it plays at once if nothing else is); ▶ and **+** play it in the web player. A station plays live until you skip or stop it; Now playing shows LIVE instead of a length.
-- **Settings on the page.** Every setting the window has, with the same limits: token, Owner ID, prefix, default volume, playlist limit, leave when idle, songs per person, longest song, stay in the channel, leave when everyone leaves, song as bot status, Quiet, even out volume, ask which YouTube result, YouTube backup, update check, start the bot when Lantern starts, minimize to tray (Windows only), and the music library folders. Press **Save settings**. The token is never shown, only "Set"; paste a new one to replace it, then press **Stop bot** and **Start**. *Setup wizard* shows the setup steps and your invite link; *Copy diagnostics* copies the redacted report.
+- **Genre (1.12).** The **Listen** page has a genre box: *Play genre* puts 25 songs in that genre on the web queue (your library's tagged songs first, shuffled, topped up with songs found online) and starts them; *Send to Discord* starts `genre` play in the chosen server. The **Discord** page has the same box under the queue, and while a genre is playing the player shows it with an *End genre* button. The **Radio** page opens on the most popular stations before you search.
+- **Settings on the page.** Every setting the window has, with the same limits: token, Last.fm API key, Owner ID, prefix, default volume, playlist limit, leave when idle, songs per person, longest song, stay in the channel, leave when everyone leaves, song as bot status, Quiet, even out volume, ask which YouTube result, YouTube backup, update check, start the bot when Lantern starts, minimize to tray (Windows only), and the music library folders. Press **Save settings**. The token and the Last.fm key are never shown, only "Set" (type `none` in the Last.fm box to remove the key); paste a new token to replace it, then press **Stop bot** and **Start**. *Setup wizard* shows the setup steps and your invite link; *Copy diagnostics* copies the redacted report.
 - **Starting and stopping.** Start bot / Stop bot on the web page signs the bot in or out while the container keeps running. The container itself: Unraid's Docker tab, or `docker start lantern` / `docker stop lantern`. It starts again by itself after a server reboot, and signs in again by itself if Discord drops the session (unless you pressed Stop bot). If Discord rejects the token, it waits for a new one on the web page.
 - **The log.** `lantern-log.txt` in the config folder, or the container's log in Unraid.
 - **Back to Windows.** Stop the container and set it not to restart (`docker stop lantern && docker update --restart no lantern`), then open `Lantern.exe` and press **Start bot**.
@@ -189,7 +192,7 @@ The **Who** column uses the levels described in the next section.
 | `loop [off/track/queue]` | `repeat` | Set the loop mode. With no argument it cycles to the next mode. | Controller |
 | `seek <1:30>` | | Jump to a time. | Controller |
 | `forward [s]`, `rewind [s]` | `ff`, `rw` | Jump 10 s, or the number of seconds given. | Controller |
-| `autoplay [on/off/soundcloud/youtube]` | `radio` | Keep playing related songs when the queue runs out, skipping recent repeats. Off by default, saved per server. `autoplay soundcloud` turns it on and takes related songs from SoundCloud (SoundCloud's related tracks, or a SoundCloud search for the last song's title); `autoplay youtube` goes back to YouTube mixes. After a SoundCloud song, autoplay follows SoundCloud either way. After a radio station it stops. `radio` with other words searches stations (see below). | Controller |
+| `autoplay [on/off/soundcloud/youtube]` | | Keep playing related songs when the queue runs out, skipping recent repeats. Off by default, saved per server. `autoplay soundcloud` turns it on and takes related songs from SoundCloud (SoundCloud's related tracks, or a SoundCloud search for the last song's title); `autoplay youtube` goes back to YouTube mixes. After a SoundCloud song, autoplay follows SoundCloud either way. After a radio station it stops. `autoplay` alone shows the setting (and the genre, if one is playing). `radio on/off/soundcloud/youtube` still sets autoplay; `radio` with other words, or alone, finds stations (see below). | Controller |
 | `save <name>` | | Save the current song and queue as a playlist. | Controller |
 | `load <name>` | | Queue a saved playlist. | Listener |
 | `playlists` | | List saved playlists. | Anyone |
@@ -201,7 +204,8 @@ The **Who** column uses the levels described in the next section.
 | `import` + attached file | | Queue a `.m3u`, `.m3u8`, `.pls` or `.xspf` playlist. Paths play only if they're in the music library. | Listener |
 | `export [type] [playlist]` | | Get the queue (or a saved playlist) as a playlist file. Local files are left out. | Anyone |
 | `dj <@role / off>` | | Set or remove the server's DJ role. | Admin |
-| `radio <words>` | `station` | Search internet radio stations (Radio Browser) and pick one of the top 4, like a YouTube search. `tag:jazz` searches a genre, `country:Germany` (or `country:DE`) a country, and they mix: `radio tag:rock country:US`. A name with no matches is tried as a tag. `/radio` does the same. `radio on/off/soundcloud/youtube` still sets autoplay. | Listener |
+| `radio <words>` | `station` | Search internet radio stations (Radio Browser) and pick one of the top 4, like a YouTube search. `tag:jazz` searches a genre, `country:Germany` (or `country:DE`) a country, and they mix: `radio tag:rock country:US`. A name with no matches is tried as a tag. `radio` alone lists the most popular stations (most votes on radio-browser.info) to pick from. `/radio` does the same. `radio on/off/soundcloud/youtube` still sets autoplay. | Listener |
+| `genre <name / off>` | `genres` | Play a genre: your music library's songs whose genre tag matches (forgiving about spelling: `hip hop` finds Hip-Hop, `r&b` finds RnB), shuffled. When the queue ends it keeps playing that genre instead of drifting, mixing library songs with songs found online (Last.fm's top songs for the genre with a Last.fm key, otherwise YouTube searches), and skips recent repeats. Nothing found anywhere: it offers radio stations for the genre. `genre off` (or `stop`) ends it; `genre` alone shows what's on and the library's genres. Per server. `/genre` too. | Listener |
 | `local <words>` | `lib` | Play the best match from the music library. Same as `play local:<words>`. `/local` suggests songs as you type. | Listener |
 | `lyrics [song]` | `ly` | Lyrics for what's playing, or for the song named. `lyrics live` follows the song with timed lyrics. | Anyone |
 | `restore` | | Put back the queue from before Lantern restarted. | Listener |
@@ -244,6 +248,7 @@ All settings are in the window and saved to `lantern-settings.json`.
 | Ask which YouTube result to play | Show the 4-result picker for text searches instead of playing the first match. On by default. |
 | YouTube backup (yt-dlp) | Use yt-dlp when YouTube's normal routes fail. Lantern downloads it next to the exe the first time it's needed. On by default (also for older settings files). |
 | Check for updates at startup | Shows a link in the window if a newer release is out. Nothing is downloaded. On by default. |
+| Last.fm API key | Optional, for `genre` play. A free key from last.fm/api adds Last.fm's top songs for each genre; without one Lantern searches YouTube for the genre. Write-only on the web page. On Docker, `LASTFM_API_KEY` wins over it. |
 
 Per-server things (volume, DJ role, autoplay, playlists and history) are set from Discord and saved to `lantern-data.json`.
 
@@ -288,6 +293,14 @@ Per-server things (volume, DJ role, autoplay, playlists and history) are set fro
 | Windows warns about the exe | It isn't signed. Choose **More info**, then **Run anyway**. |
 
 # What changed
+
+## 1.12.0 (November 2026)
+
+- Genre play: `genre <name>` / `/genre` plays the music library's songs tagged with that genre (shuffled), then keeps to the genre when the queue ends, mixing library songs with songs found online (Last.fm top tracks with a Last.fm key, else YouTube searches) and skipping recent repeats. With nothing found it offers radio stations for the genre. `genre off`, `stop` or `leave` ends it.
+- `radio` alone (and `/radio` with no search) lists the most popular stations; the web Radio tab opens on them.
+- `autoplay` alone shows the setting instead of switching it.
+- Web page: genre boxes on the Listen and Discord pages, an *End genre* button, and the Last.fm key in Settings.
+- The library index keeps genre tags (filled in at the next scan).
 
 ## 1.11.1 (November 2026)
 

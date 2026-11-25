@@ -271,6 +271,16 @@ pub async fn search_words(text: &str, limit: usize) -> Result<Vec<Station>, Stri
     Ok(found)
 }
 
+/// The directory's most popular working stations, most votes first (1.12:
+/// bare `radio`, and the web Radio tab before a search).
+pub fn popular_path(limit: usize) -> String {
+    format!("/json/stations/search?order=votes&reverse=true&hidebroken=true&limit={}", limit.clamp(1, MAX_RESULTS))
+}
+
+pub async fn popular(limit: usize) -> Result<Vec<Station>, String> {
+    parse_stations(&get(&popular_path(limit)).await?)
+}
+
 /// One station by its ID (the web page sends only the ID).
 pub async fn by_uuid(uuid: &str) -> Result<Station, String> {
     if !valid_uuid(uuid) {
@@ -336,6 +346,22 @@ mod tests {
         assert!(!item.allow_private_host, "a directory entry pointing at the LAN is still refused");
         let limited = crate::limits::check(vec![item], 0, 0, 5, false);
         assert_eq!(limited.kept.len(), 1, "the longest-song limit lets live radio through");
+    }
+
+    #[tokio::test]
+    #[ignore]
+    async fn live_popular_stations() {
+        let stations = popular(4).await.expect("Radio Browser answered");
+        assert_eq!(stations.len(), 4);
+        assert!(stations.iter().all(|s| s.item().is_some()));
+        println!("popular: {:?}", stations.iter().map(|s| s.title()).collect::<Vec<_>>());
+    }
+
+    #[test]
+    fn popular_stations_are_the_most_voted_working_ones() {
+        assert_eq!(popular_path(4), "/json/stations/search?order=votes&reverse=true&hidebroken=true&limit=4");
+        assert!(popular_path(500).ends_with(&format!("limit={MAX_RESULTS}")));
+        assert!(popular_path(0).ends_with("limit=1"));
     }
 
     #[test]

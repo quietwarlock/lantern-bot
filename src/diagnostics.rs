@@ -47,6 +47,7 @@ pub fn redact(text: &str, secrets: &[&str]) -> String {
 pub fn safe_settings(settings: &Settings) -> String {
     let mut copy = settings.clone();
     copy.token = if copy.token.trim().is_empty() { String::new() } else { "<set>".into() };
+    copy.lastfm_api_key = if copy.lastfm_api_key.trim().is_empty() { String::new() } else { "<set>".into() };
     copy.owner = if copy.owner.trim().is_empty() { String::new() } else { "<set>".into() };
     copy.library_folders = copy.library_folders.iter().map(|_| "<folder>".to_string()).collect();
     serde_json::to_string_pretty(&copy).unwrap_or_default()
@@ -67,7 +68,7 @@ pub fn report(settings: &Settings, logs: &[String], connection: &str) -> String 
         logs.len() - start,
         log
     );
-    redact(&text, &[settings.token.as_str(), settings.owner.as_str()])
+    redact(&text, &[settings.token.as_str(), settings.owner.as_str(), settings.lastfm_api_key.as_str()])
 }
 
 #[cfg(test)]
@@ -92,6 +93,7 @@ mod tests {
         let settings = Settings {
             token: format!("{}.{}.{}", "x".repeat(24), "y".repeat(6), "z".repeat(27)),
             owner: "123456789012345678".into(),
+            lastfm_api_key: "0123456789abcdef0123456789abcdef".into(),
             library_folders: vec![r"\\nas\music".into(), r"C:\Users\someone\Music".into()],
             ..Default::default()
         };
@@ -99,6 +101,7 @@ mod tests {
         let out = report(&settings, &logs, "Online");
         assert!(!out.contains(&settings.token) && !out.contains("123456789012345678") && !out.contains("987654321098765432"));
         assert!(!out.contains("someone") && !out.contains("nas"));
+        assert!(!out.contains("0123456789abcdef0123456789abcdef"), "the Last.fm key is never in a report");
         assert!(out.contains("line 299") && !out.contains("line 99 "));
         assert!(out.contains("Library folders: 2"));
     }

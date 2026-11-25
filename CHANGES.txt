@@ -1,3 +1,36 @@
+Lantern 1.12.0
+==============
+
+New
+- Genre play: `genre <name>` (or /genre). Queues your music library's songs
+  whose genre tag matches, shuffled (matching forgives spacing, & and small
+  typos: "hip hop" finds Hip-Hop, "r&b" finds RnB, "metal" finds Nu Metal;
+  short names like "rap" must be a whole word). When the queue runs out it
+  keeps playing that genre instead of drifting like autoplay can: library
+  songs and songs found online in turns, recent repeats skipped. Online
+  songs come from Last.fm's top tracks for the genre when a Last.fm API key
+  is set (free, last.fm/api; LASTFM_API_KEY on Docker or the "Last.fm API
+  key" setting), else from YouTube searches for the genre; either way they
+  play through the usual YouTube lookup with the yt-dlp backup. If nothing
+  turns up at all, Lantern offers radio stations for the genre. `genre off`,
+  stop or leave ends it; `genre` alone shows what's on and lists the
+  library's genres. Per server.
+- Bare `radio` (and /radio with no search) lists the most popular radio
+  stations (most votes on radio-browser.info) to pick from, like a search.
+  The web page's Radio tab opens on the same list.
+- Web page: a genre box on the Listen page (Play genre in the browser, 25
+  songs: library first, topped up online; or Send to Discord) and on the
+  Discord page, with the current genre and an End genre button. Settings
+  has the Last.fm key (write-only, like the token).
+- The music library index now keeps each song's genre tag. It fills in at
+  the next library scan (every start on Docker; Rescan in the window).
+
+Changed
+- Bare `autoplay` (and /autoplay with nothing chosen) shows how autoplay is
+  set, and the genre if one is playing, instead of switching it on or off.
+  `autoplay on/off/soundcloud/youtube` and the old `radio on/off/sc/yt`
+  work as before.
+
 Lantern 1.11.1
 ==============
 

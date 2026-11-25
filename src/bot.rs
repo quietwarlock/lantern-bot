@@ -225,6 +225,10 @@ pub enum Action {
     /// A link or search typed into the web page (1.9). `local:` words search the
     /// music library. Private-network links are refused, as for non-owners.
     Play(String),
+    /// Genre play from the web page (1.12).
+    Genre(String),
+    /// Ends the genre lock.
+    GenreOff,
 }
 
 /// How many recently played songs the window lists.
@@ -404,6 +408,7 @@ async fn start_client(ui: UiState, control: mpsc::UnboundedSender<Control>) -> R
         slash_done: AtomicBool::new(false),
             resume_offered: AtomicBool::new(false),
         status: std::sync::Mutex::new(None),
+        genres: std::sync::Mutex::new(HashMap::new()),
     });
     let mut client = Client::builder(&token, intents)
         .event_handler(Handler { core: core.clone() })
@@ -530,6 +535,15 @@ pub(crate) struct Core {
     /// The "Listening to" status last sent. `None`: not sent yet (or Discord
     /// reconnected), so the next update always goes out.
     pub status: std::sync::Mutex<Option<Option<String>>>,
+    /// Genre locks by server (1.12): `genre <name>` keeps playing that genre.
+    pub genres: std::sync::Mutex<HashMap<u64, crate::genre::GenreLock>>,
+}
+
+/// What `genre` queues at once (1.12).
+pub(crate) struct GenreStart {
+    pub items: Vec<Item>,
+    /// Library songs that matched (all of them, not just the ones queued now).
+    pub library_total: usize,
 }
 
 impl Core {
@@ -699,7 +713,7 @@ impl Core {
                     self.say(text, "Autoplay stopped: the last few songs wouldn't play. Queue a song to carry on.").await;
                     return Exit::QueueEnded;
                 }
-                None => match self.autoplay_pick(guild).await {
+                None => match self.next_auto(guild).await {
                     Some(item) => item,
                     None => return Exit::QueueEnded,
                 },
@@ -1217,6 +1231,132 @@ impl Core {
         None
     }
 
+    // ------------------------------------------------------------ genre (1.12)
+
+    /// When the queue runs out: the genre lock first, else autoplay.
+    async fn next_auto(&self, guild: GuildId) -> Option<Item> {
+        if self.genre_name(guild).is_some() {
+            return self.genre_pick(guild).await;
+        }
+        self.autoplay_pick(guild).await
+    }
+
+    /// The genre this server is locked to.
+    pub fn genre_name(&self, guild: GuildId) -> Option<String> {
+        self.genres.lock().unwrap_or_else(|p| p.into_inner()).get(&guild.get()).map(|l| l.name.clone())
+    }
+
+    /// Ends the genre lock. The queue is left alone.
+    pub fn stop_genre(&self, guild: GuildId) -> String {
+        match self.genres.lock().unwrap_or_else(|p| p.into_inner()).remove(&guild.get()) {
+            Some(lock) => format!("Genre play ended (**{}**). Songs already queued still play.", escape(&lock.name)),
+            None => "No genre is playing.".into(),
+        }
+    }
+
+    /// The next genre song: library and online songs taken in turns,
+    /// recently played ones skipped. `None` when there's nothing more.
+    async fn genre_next(&self, guild: GuildId) -> Option<Item> {
+        let recent: HashSet<String> = self.store.history(guild.get()).into_iter().map(|p| crate::genre::song_key(&p.item.source)).collect();
+        let key = crate::genre::lastfm_key(&self.ui.settings().lastfm_api_key);
+        for _ in 0..10 {
+            let (step, name) = {
+                let mut locks = self.genres.lock().unwrap_or_else(|p| p.into_inner());
+                let lock = locks.get_mut(&guild.get())?;
+                match lock.next(&recent) {
+                    (Some(item), _) => return Some(item),
+                    (None, false) => return None,
+                    (None, true) => (crate::genre::next_fetch(lock, key.is_some()), lock.name.clone()),
+                }
+            };
+            let (items, failed) = crate::genre::fetch(&step, key.as_deref(), &name).await;
+            let found = items.len();
+            let first_lastfm_note = {
+                let mut locks = self.genres.lock().unwrap_or_else(|p| p.into_inner());
+                let lock = locks.get_mut(&guild.get()).filter(|l| l.name == name)?;
+                let had = lock.lastfm_note.is_some();
+                crate::genre::absorb(lock, &step, items, failed.clone());
+                (!had).then(|| lock.lastfm_note.clone()).flatten()
+            };
+            match (&step, failed) {
+                (crate::genre::Fetch::LastFm { page }, None) => self.ui.log(format!("Genre {name}: Last.fm page {page}, {found} songs")),
+                (crate::genre::Fetch::YouTube { query }, None) => self.ui.log(format!("Genre {name}: YouTube search \"{query}\", {found} songs")),
+                (_, Some(err)) => self.ui.log(format!("Genre {name}: {err}")),
+                _ => {}
+            }
+            if let Some(note) = first_lastfm_note {
+                self.ui.log(format!("Genre {name}: not using Last.fm ({note}); YouTube searches instead"));
+            }
+        }
+        None
+    }
+
+    /// [`genre_next`](Self::genre_next) for the player: when the genre runs
+    /// dry the lock ends and the channel hears why.
+    async fn genre_pick(&self, guild: GuildId) -> Option<Item> {
+        if let Some(item) = self.genre_next(guild).await {
+            return Some(item);
+        }
+        let ended = self.genres.lock().unwrap_or_else(|p| p.into_inner()).remove(&guild.get());
+        if let Some(lock) = ended {
+            let text = self.guilds.lock().await.get(&guild.get()).and_then(|s| s.text_channel);
+            let prefix = self.ui.settings().prefix;
+            self.ui.log(format!("Genre {} ran out of new songs", lock.name));
+            self.say(text, &format!("Genre **{}** ran out of new songs. `{prefix}radio tag:{}` finds a station for it.", escape(&lock.name), lock.name)).await;
+        }
+        None
+    }
+
+    /// Starts genre play: the library songs to queue now (or the first online
+    /// song when the library has none) and the lock for what follows. An
+    /// error means nothing was found anywhere, and no lock is left behind.
+    pub(crate) async fn start_genre(&self, guild: GuildId, name: &str) -> Result<GenreStart, String> {
+        let name = crate::genre::clean_name(name);
+        if name.is_empty() {
+            return Err("Say which genre.".into());
+        }
+        let batch = self.ui.settings().playlist_limit.max(1);
+        let library = crate::library::with(|index| crate::genre::library_matches(index, &name));
+        let library_total = library.len();
+        let mut lock = crate::genre::GenreLock::new(&name, library);
+        let items = lock.take_library(batch);
+        self.genres.lock().unwrap_or_else(|p| p.into_inner()).insert(guild.get(), lock);
+        self.ui.log(format!("Genre {name}: {library_total} library songs match"));
+        if !items.is_empty() {
+            return Ok(GenreStart { items, library_total });
+        }
+        match self.genre_next(guild).await {
+            Some(item) => Ok(GenreStart { items: vec![item], library_total }),
+            None => {
+                self.genres.lock().unwrap_or_else(|p| p.into_inner()).remove(&guild.get());
+                Err(format!("Couldn't find any **{}** songs.", escape(&name)))
+            }
+        }
+    }
+
+    /// Genre play from the web page's Discord tab (1.12).
+    async fn genre_from_web(self: &Arc<Self>, guild: GuildId, name: &str) -> Result<String, String> {
+        self.ensure_voice(guild).await?;
+        let start = self.start_genre(guild, name).await?;
+        let shown = self.genre_name(guild).unwrap_or_default();
+        let queued = self.queue_local(guild, start.items, false).await;
+        Ok(format!("{queued} Genre lock: {shown} ({} library songs match). It keeps playing {shown} when the queue ends.", start.library_total))
+    }
+
+    /// `autoplay` with nothing after it: how autoplay and genre play are set.
+    pub fn autoplay_status(&self, guild: GuildId) -> String {
+        let data = self.store.guild(guild.get());
+        let mut text = if data.autoplay {
+            format!("Autoplay is on, from {}.", if data.soundcloud_autoplay { "SoundCloud" } else { "YouTube" })
+        } else {
+            "Autoplay is off.".to_string()
+        };
+        if let Some(genre) = self.genre_name(guild) {
+            text.push_str(&format!(" Genre play is on: **{}** (it comes before autoplay).", escape(&genre)));
+        }
+        text
+    }
+
     // ------------------------------------------------------------------ actions
 
     pub async fn skip(&self, guild: GuildId) -> Result<String, String> {
@@ -1283,6 +1423,7 @@ impl Core {
                 if !only_if_idle {
                     state.pending.clear();
                 }
+                self.genres.lock().unwrap_or_else(|p| p.into_inner()).remove(&guild.get());
                 state.epoch += 1;
                 state.skip_requested = true;
                 if let Some(handle) = state.handle.take() {
@@ -1503,6 +1644,12 @@ impl Core {
                 None => Err("That song is no longer in the history.".into()),
             },
             Action::Play(query) => self.play_from_web(guild, &query).await,
+            Action::Genre(name) => self.genre_from_web(guild, &name).await,
+            Action::GenreOff => {
+                let text = self.stop_genre(guild);
+                self.publish().await;
+                Ok(text)
+            }
         };
         result.unwrap_or_else(|e| e).replace("**", "")
     }
@@ -1589,6 +1736,7 @@ impl Core {
                         loop_mode: s.queue.loop_mode,
                         autoplay: data.autoplay,
                         soundcloud_autoplay: data.soundcloud_autoplay,
+                        genre: self.genre_name(GuildId::new(*id)),
                         volume: data.volume.unwrap_or(default_volume),
                         recent: data.history.iter().rev().take(RECENT_SHOWN).map(|p| (p.at, p.item.title.clone())).collect(),
                     }
@@ -2174,7 +2322,39 @@ mod tests {
             slash_done: AtomicBool::new(false),
             resume_offered: AtomicBool::new(false),
             status: std::sync::Mutex::new(None),
+            genres: std::sync::Mutex::new(HashMap::new()),
         })
+    }
+
+    #[tokio::test]
+    async fn genre_lock_ends_with_genre_off_and_with_leave() {
+        let core = core();
+        let guild = GuildId::new(7);
+        assert_eq!(core.genre_name(guild), None);
+        assert_eq!(core.stop_genre(guild), "No genre is playing.");
+        core.genres.lock().unwrap().insert(7, crate::genre::GenreLock::new("nu metal", Vec::new()));
+        assert_eq!(core.genre_name(guild).as_deref(), Some("nu metal"));
+        assert!(core.autoplay_status(guild).contains("Genre play is on: **nu metal**"));
+        assert!(core.autoplay_status(guild).starts_with("Autoplay is off."));
+        assert!(core.stop_genre(guild).contains("nu metal"));
+        assert_eq!(core.genre_name(guild), None);
+        core.genres.lock().unwrap().insert(7, crate::genre::GenreLock::new("jazz", Vec::new()));
+        core.guilds.lock().await.entry(7).or_default();
+        core.leave(guild).await;
+        assert_eq!(core.genre_name(guild), None, "stop/leave ends genre play");
+    }
+
+    #[tokio::test]
+    async fn genre_lock_plays_its_library_songs_before_autoplay() {
+        let core = core();
+        let guild = GuildId::new(8);
+        let mut lock = crate::genre::GenreLock::new("rock", vec![Item::new("Song", "/music/song.mp3", Kind::File)]);
+        lock.online_done = true;
+        core.genres.lock().unwrap().insert(8, lock);
+        let first = core.next_auto(guild).await;
+        assert_eq!(first.map(|i| i.source), Some("/music/song.mp3".to_string()));
+        assert!(core.next_auto(guild).await.is_none(), "ran out");
+        assert_eq!(core.genre_name(guild), None, "a genre that ran out ends");
     }
 
     #[test]

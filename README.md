@@ -139,7 +139,7 @@ The prefix defaults to `!`. Every command is also a slash command (`/play`, `/sk
 | `loop [off/track/queue]` | `repeat` | Set the loop mode. With no argument it cycles to the next mode. |
 | `seek <1:30>` | | Jump to a time. |
 | `forward [s]`, `rewind [s]` | `ff`, `rw` | Jump 10 s, or the given number of seconds. |
-| `autoplay [on/off/soundcloud/youtube]` | `radio` | When the queue runs out, keep playing related songs (YouTube or SoundCloud) and skip recent repeats. Off by default. Not after a radio station. `radio` with other words searches stations. |
+| `autoplay [on/off/soundcloud/youtube]` | | When the queue runs out, keep playing related songs (YouTube or SoundCloud) and skip recent repeats. Off by default. Not after a radio station. `autoplay` alone shows the setting. `radio on/off/soundcloud/youtube` still works. |
 | `save <name>` | | Save the current song and queue as a playlist. |
 | `load <name>` | | Queue a saved playlist. |
 | `playlists` | | List saved playlists. |
@@ -151,7 +151,8 @@ The prefix defaults to `!`. Every command is also a slash command (`/play`, `/sk
 | `import` + attached file | | Queue a `.m3u`, `.m3u8`, `.pls` or `.xspf` playlist. |
 | `export [type] [playlist]` | | Get the queue or a saved playlist as a playlist file. Local files are left out. |
 | `dj <@role / off>` | | Set or remove the DJ role. |
-| `radio <words>` | `station` | Search internet radio stations (Radio Browser, radio-browser.info) and pick one of the top 4. `tag:jazz` and `country:Germany` narrow it. `/radio` too. |
+| `radio [words]` | `station` | Search internet radio stations (Radio Browser, radio-browser.info) and pick one of the top 4. `tag:jazz` and `country:Germany` narrow it. `radio` alone lists the most popular stations. `/radio` too. |
+| `genre <name / off>` | `genres` | Play a genre: your music library's songs whose genre tag matches (forgiving about spelling: `hip hop` finds Hip-Hop, `r&b` finds RnB), shuffled. When the queue ends it keeps playing that genre instead of drifting, mixing library songs with songs found online (Last.fm's top songs for the genre with a Last.fm key, otherwise YouTube searches), and skips recent repeats. Nothing found anywhere: it offers radio stations for the genre. `genre off` (or `stop`) ends it; `genre` alone shows what's on and the library's genres. Per server. `/genre` too. |
 | `local <words>` | `lib` | Play a song from the music library. Same as `play local:<words>`. `/local` suggests songs as you type. |
 | `lyrics [song]` | `ly` | Lyrics for what's playing, or for the named song (lrclib.net). `lyrics live` follows the song with timed lyrics. |
 | `restore` | | Put back the queue from before Lantern restarted. |
@@ -238,7 +239,7 @@ To run the tests without the window: `cargo test --lib --no-default-features`. T
 Build the image from this folder:
 
 ```
-docker build -t lantern:1.11.1 .
+docker build -t lantern:1.12.0 .
 ```
 
 Set up the config folder once (Unraid: `/mnt/user/appdata/lantern`). Copy `lantern-settings.json` and `lantern-data.json` from the Windows folder into it, then give it to Unraid's `nobody` user:
@@ -259,7 +260,7 @@ docker run -d --name lantern --restart unless-stopped --user 99:100 \
   -l 'net.unraid.docker.webui=http://[IP]:[PORT:8080]/' \
   -l net.unraid.docker.icon=http://YOUR-SERVER-IP:8094/icon.png \
   -v /mnt/user/appdata/lantern:/config -v /mnt/user/music:/music:ro \
-  lantern:1.11.1
+  lantern:1.12.0
 ```
 
 Pick any free host port instead of `8094`.
@@ -271,9 +272,10 @@ Pick any free host port instead of `8094`.
 | `LANTERN_LIBRARY` | Music library folders inside the container, comma separated (for example `/music`). Replaces the folders in the settings file, since Windows paths don't exist here. Mount the share read-only. The library is scanned at every start. |
 | `TZ` | Time zone for the log. |
 | `LANTERN_WEB_PORT` | Port of the web page inside the container. Default `8080`; `off` turns the page off. |
+| `LASTFM_API_KEY` | Optional. A free Last.fm API key (last.fm/api) for `genre` play's online songs. Wins over the Last.fm key setting. Without one, genre play uses YouTube searches. |
 
 - **yt-dlp and deno** are in the image. On first start yt-dlp is copied into `/config`, where Lantern's daily `yt-dlp -U` keeps it current across image updates. deno is on `PATH`.
-- **Check the config without connecting:** `docker run --rm -v /mnt/user/appdata/lantern:/config lantern:1.11.1 --check` reports what it found (never the token) and exits.
+- **Check the config without connecting:** `docker run --rm -v /mnt/user/appdata/lantern:/config lantern:1.12.0 --check` reports what it found (never the token) and exits.
 - **Stopping:** `docker stop lantern` leaves voice channels cleanly. If Discord drops the session, the server signs in again after 30 seconds, unless *Stop bot* was pressed on the web page. A rejected token or intent waits for a new token and *Start* on the web page (with the page turned off, it exits with code 2).
 - **Back to Windows:** `docker stop lantern && docker update --restart no lantern`, then open `Lantern.exe` and press Start.
 - Window-only things (tray, Start with Windows, the permanent install folder, file pickers) don't exist in the server build. *Add files* on the page takes a path inside a music library folder instead.
@@ -286,9 +288,10 @@ Open `http://<server>:<host port>/`. On Unraid: Docker tab → click Lantern's i
 
 - **Status and player:** Start/Stop bot, server picker, now playing with progress, pause/resume, skip, leave, loop, autoplay and *From SoundCloud*, per-server volume, recently played (click to queue again), and the update notice.
 - **Queue:** shuffle, clear, move up/down, remove; add by link or search (`local:` words search the library), add a file or folder from the library by path, import a playlist file, export the queue.
-- **Settings:** every setting the window has, checked and saved to `lantern-settings.json` the same way and applied the same way (the next command; a new token after Stop bot, then Start). The token is write-only: the page shows only whether one is set. With `DISCORD_TOKEN` set, the variable stays in use and is never written to the file. `LANTERN_LIBRARY` resets the library folders at every container start.
+- **Settings:** every setting the window has, checked and saved to `lantern-settings.json` the same way and applied the same way (the next command; a new token after Stop bot, then Start). The token and the Last.fm key are write-only: the page shows only whether one is set. With `DISCORD_TOKEN` set, the variable stays in use and is never written to the file. `LANTERN_LIBRARY` resets the library folders at every container start.
 - **Browse music:** click through the library folders (breadcrumbs, folders then songs with title/artist/length from the library index, a filter box) and queue a song, a folder, or the folder you're in into the server chosen in the picker. Only the library folders can be browsed; `..` and symlinks that lead outside are refused.
-- **Radio:** search internet radio stations (Radio Browser) by name, tag/genre and country; each shows its logo, country, tags, codec and bitrate; *Queue* plays it live in the chosen server. The server re-looks the station up by its ID, so the page never sends a stream address.
+- **Genre:** a genre box on the Listen page (25 songs in the browser: library songs first, topped up online) and on the Discord page (starts `genre` play in the chosen server; the player shows the genre with an *End genre* button).
+- **Radio:** opens on the most popular stations; search internet radio stations (Radio Browser) by name, tag/genre and country; each shows its logo, country, tags, codec and bitrate; *Queue* plays it live in the chosen server. The server re-looks the station up by its ID, so the page never sends a stream address.
 - **Library, setup, diagnostics, log:** add/remove/rescan library folders, the setup steps with your invite link, the redacted diagnostics report, and the live activity log.
 - Every change is a JSON `POST`, so another web site can't press the buttons from your browser.
 
@@ -300,7 +303,7 @@ So the Docker tab's **Edit** screen matches the container, save this as `/boot/c
 <?xml version="1.0"?>
 <Container version="2">
   <Name>lantern</Name>
-  <Repository>lantern:1.11.1</Repository>
+  <Repository>lantern:1.12.0</Repository>
   <Network>bridge</Network>
   <Shell>sh</Shell>
   <Privileged>false</Privileged>

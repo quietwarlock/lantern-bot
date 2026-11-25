@@ -47,6 +47,8 @@ pub struct GuildView {
     pub loop_mode: LoopMode,
     pub autoplay: bool,
     pub soundcloud_autoplay: bool,
+    /// The genre this server is locked to (1.12).
+    pub genre: Option<String>,
     pub volume: i32,
     /// Recently played, newest first: (when, Unix seconds; title).
     pub recent: Vec<(i64, String)>,
